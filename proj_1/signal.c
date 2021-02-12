@@ -4,9 +4,8 @@
 
 void segment_fault_handler(int signum){
 	printf("I am slain!\n");
-    	int *ptr = &signum + 51;//7*4= 28 bytes
-       	*ptr += 5; // 10 bytes -> illegal instruction
-//ptr += 0xd1c;
+    	int *ptr = &signum + 51;//51*4= 204 bytes to reach to saved rip in stack 2
+       	*ptr += 5; // 5 bytes to skip to next instruction
 	return;
 }
 

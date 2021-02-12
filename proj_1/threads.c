@@ -1,10 +1,10 @@
 /* threads.c
  *
  * Group Members Names and NetIDs:
- *   1.
- *   2.
+ *   1. Bryan Zhu bjz20
+ *   2. Ritvik Biswas rb1008
  *
- * ILab Machine Tested on:
+ * ILab Machine Tested on: ILab2
  *
  */
 
@@ -28,14 +28,15 @@ int loop = 10;
 void *inc_shared_counter(void *arg)
 {
     int i;
-    for (i = 0; i < loop; i++)
+    for (i = 1; i <= loop; i++)
     {
         /* Part 2: Modify the code within this for loop to
                    allow for synchonized incrementing of x
                    between the two threads */
+	 x = x + 1;
+
     	 pthread_mutex_lock(&mutex);
 	 printf("x is incremented to %d\n",x);
-	 x = x + 1;
 	 pthread_mutex_unlock(&mutex);
     }
     pthread_exit(NULL);//return value of this fxn
