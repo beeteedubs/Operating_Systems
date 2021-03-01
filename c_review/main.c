@@ -2,6 +2,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 int main(){
+	
+	uint t = 5;
+	printf("%d",5);
 	if (1>0){
 		uint32_t v = 0xdeadbeef;
 		printf("%02x\n",((char *)&v)[0]);

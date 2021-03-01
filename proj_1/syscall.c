@@ -7,7 +7,7 @@
  * ILab Machine Tested on: ILab 2
  *
  */
-
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>

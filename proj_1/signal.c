@@ -1,3 +1,12 @@
+/* signal.c
+*
+* Group Members Names and NetIDs:
+*   1. Bryan Zhu bjz20
+*   2. Ritvik Biswas rb1008
+*
+* ILab Machine Tested on: ILab2
+*
+*/
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
