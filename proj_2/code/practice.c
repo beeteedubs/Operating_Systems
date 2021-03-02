@@ -1,38 +1,53 @@
 #include "basics.h"
 
 #define STACK_SIZE SIGSTKSZ
+int running = 0;
+ucontext_t fctx,bctx;
 
-void foo(ucontext_t *bctx){
-	for (;;){
+void foo(){
+	while(1){
 		puts("foo");
-		sleep(2);
-		setcontext(bctx);
 	}
 }
 
-void bar(ucontext_t *mctx){
-	for(;;){
+void bar(){
+	while(1){
 		puts("bar");
-		sleep(2);
-		setcontext(mctx);
 	}
 }
 
+void ring(int signum){
+	puts("ring");
+	if(running==0){//run foo
+		running = 1;
+		puts("runing =- 1");
+		setcontext(&fctx);
+	}else{ //run bar
+		running = 0;
+		puts("running = 0");
+		setcontext(&bctx);
+	}
+}
 int main(int argc, char** argv){
-	/* STEPS
-		- init 
-			- sigaction to reigster signal handler
 
-	*/
-	//nctx = main's context
-	ucontext_t fctx,bctx,mctx;
+	// init sig
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = &ring;
+	sigaction(SIGPROF,&sa, NULL);
 
-	// init contexts to this context, make them into foo and bar contexts later
+	// init timer
+	struct itimerval timer;
+	timer.it_interval.tv_usec = 0;
+	timer.it_interval.tv_sec = 2;
+	timer.it_value.tv_usec=0;
+	timer.it_value.tv_sec=2;
+	
+	// init contexts
 	getcontext(&fctx);
 	getcontext(&bctx);
-	getcontext(&mctx);
 
-	// do this cuz makecontext() requires this
+	// makecontext() requires this
 	void *foo_stack = malloc(STACK_SIZE);
 	fctx.uc_link = NULL;
 	fctx.uc_stack.ss_sp=foo_stack;
@@ -47,15 +62,15 @@ int main(int argc, char** argv){
 
 	// make the contexts
 	puts("about to make 2 contexts");
-	makecontext(&fctx,(void *)&foo,1,&bctx);
-	makecontext(&bctx,(void *)&bar,1,&mctx);
+	makecontext(&fctx,(void *)&foo,0);
+	makecontext(&bctx,(void *)&bar,0);
 	puts("successfully modified context");
 
-	// setcontext(), no need to swap and save here
-	swapcontext(&mctx,&fctx);// start w/ foo
+	// enable timer
+	setitimer(ITIMER_PROF,&timer,NULL);
 	
-	// test for error
-	puts("this should run after foo and bar printed");
-	
+	// kill time, initially print nothing
+	while(1);
+
 	return 0;
 }
