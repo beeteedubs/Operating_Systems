@@ -33,7 +33,7 @@
 #include <ucontext.h>
 
 typedef uint rpthread_t;
-rpthread_t tid = 0;
+
 
 typedef struct threadControlBlock {
 	/* add important states in a thread control block */

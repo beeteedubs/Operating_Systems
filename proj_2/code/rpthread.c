@@ -9,10 +9,45 @@
 #include <signal.h> // need this cuz "stack_t uc_stack" defined here
 // INITAILIZE ALL YOUR VARIABLES HERE
 // YOUR CODE HERE
-typedef struct Node{
-	int *data;
-	node *next;
-}node;
+
+//Linked List Implementation
+
+rpthread_t tid = 0;
+
+struct Node{
+	ucontext_t data;
+	struct Node *next;
+};
+
+// Append to end of LL
+void append(struct Node** head, ucontext_t new_data){
+	// malloc node
+	struct Node* new_node = (struct Node*)malloc(sizeof(struct Node));
+	
+	// put in data
+	new_node->data = new_data;
+
+	// last node, so make next NULL
+	new_node->next = NULL;
+
+	// if LL empty, assign as head
+	if (*head == NULL){
+		*head = new_node;
+		return;
+	}
+	
+	// traverse until last node
+	struct Node *last = *head; // start last at head to traverse
+
+	while (last->next != NULL)
+		last = last->next;
+
+	last->next = new_node;
+	return;
+}
+
+// init runqueue
+struct Node* runqueue = NULL;
 
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, 
@@ -32,15 +67,16 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 		tid = tid+ 1; // increment global thread ID so no 2 threads have same thread ID
 		thread_control_block.rpthread_id = *thread;//set thread id in TCB
 		thread_control_block.thread_status = READY;//set status in TCB
-		if (getcontext(&thread_control_block.context) < 0){//init context
+		if (getcontext(&thread_control_block.context) < 0){//init context, need this or will segfault
 			perror("getcontext");
 			exit(1);
 		}
-		makecontext(&thread_control_block.context,(void *)&function,0);//prob wrong to put 0, but can't figure out how to put void * args into here
+		makecontext(&thread_control_block.context,(void *)&function,0);//prob wrong to put 0, can't figure out how to put void * args into here
 		thread_control_block.stack = malloc(STACK_SIZE);
 		thread_control_block.priority = 0; // prob wrong: default highest
 
-		//add to runqueue
+		//add to runqueue, if first thread ID then it becomes head, tested in node.c
+		append(&runqueue,thread_control_block.context);
 
     return 0;
 };
@@ -49,6 +85,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 int rpthread_yield() {
 	
 	// change thread state from Running to Ready
+	
 	// save context of this thread to its thread control block
 	// wwitch from thread context to scheduler context
 
