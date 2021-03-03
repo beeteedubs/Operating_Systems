@@ -37,7 +37,7 @@ void enQueue(Queue* q, tcb data){
 
 qNode* deQueue(Queue* q){
     if (q->front == NULL) 
-        return; 
+        return NULL; 
     qNode* temp = q->front; 
     q->front = q->front->next; 
     if (q->front == NULL) 
@@ -60,7 +60,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
        // allocate space of stack for this thread to run
        // after everything is all set, push this thread int
        // YOUR CODE HERE
-
+	puts("pleas work");
 	//first initialize the TCB
 	tcb thread_control_block;
 
@@ -69,12 +69,13 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	tid = tid+ 1; // increment GLOBAL thread ID so no 2 threads have same thread ID
 	thread_control_block.rpthread_id = *thread;//set thread id in TCB
 	thread_control_block.thread_status = READY;//set status in TCB
-	
+	puts("about to make context");
 	if (getcontext(&thread_control_block.context) < 0){//init context, need this or will segfault
 		perror("getcontext");
 		exit(1);
 	}
 	//allocate space for the stack
+	puts("about ot malloc");
 	void *stack = malloc(STACK_SIZE);
 	if(stack == NULL){
 		perror("Failed to allocate stack");
@@ -83,22 +84,24 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 
 	//setup context to be used
 	thread_control_block.context.uc_link = NULL; //ask TA abt this too
-	thread_control_block.context.ss_sp = stack;
-	thread_control_block.context.ss_size = STACK_SIZE;
-	thread_control_block.context.ss_flags = 0;
+	thread_control_block.context.uc_stack.ss_sp = stack;
+	thread_control_block.context.uc_stack.ss_size = STACK_SIZE;
+	thread_control_block.context.uc_stack.ss_flags = 0;
 
 	makecontext(&thread_control_block.context,(void *)&function,0);//prob wrong to put 0, can't figure out how to put void * args into here, ask TA
-	thread_control_block.stack = malloc(STACK_SIZE);
 	thread_control_block.priority = 0; // prob wrong: default highest
 
 	//following lines added by Ritvik to address no initial thread being run! Check with Bryan and TA
 	//check if runQueue is NULL
+	puts("about to runqueue");
 	if(runQueue == NULL){//if runQueue is NULL, no thread is running at the moment, so set the currentThreadTCB to this thread's TCB and set the context to that thread
 		runQueue = createQueue();
 		thread_control_block.thread_status = SCHEDULED;
 		currentThreadTCB = &thread_control_block;
-		setContext(&thread_control_block.context);
+		puts("about to setcontext");
+		setcontext(&thread_control_block.context);
 	}else{//else enQueue tcb to runQueue
+		puts("about ot enqueue");
 		enQueue(runQueue,thread_control_block);
 	}
 	
@@ -117,10 +120,10 @@ int rpthread_yield() {
 	*	We have a current context running and its TCB is pointed to by currentThreadTCB (global variable)
 */
 	// change currentThreadTCB's state to Ready,
-	*currentThreadTCB.thread_status = READY
+    currentThreadTCB->thread_status = READY;
 
 	//save the newest context/stack back into the TCB (ASK TA)
-	swapContext(&currentThreadTCB.context,&deQueue(runQueue).data.context);
+	swapcontext(&(currentThreadTCB->context),&(deQueue(runQueue)->data.context));
 
 	//queue the former context into the runQueue
 	enQueue(runQueue,*currentThreadTCB);

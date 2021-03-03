@@ -72,7 +72,7 @@ typedef struct rpthread_mutex_t {
 typedef struct qNode
 {
 	tcb data;
-	struct node *next;
+	struct qNode *next;
 }qNode;
 
 //struct for the queue itself

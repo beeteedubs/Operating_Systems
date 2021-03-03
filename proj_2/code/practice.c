@@ -47,7 +47,7 @@ int main(int argc, char** argv){
 	struct sigaction sa;
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = &signal_handler;
-	sigaction(SIGALRM,&sa, NULL);
+	sigaction(SIGPROF,&sa, NULL);
 
 	// init timer
 	struct itimerval timer;
