@@ -1,8 +1,8 @@
 // File:	rpthread_t.h
 
-// List all group member's name: Bryan Zhu, Ritvik Biswas
-// username of iLab: bjz20
-// iLab Server: ilab3
+// List all group member's name: Ritvik Biswas, Bryan Zhu
+// username of iLab:
+// iLab Server:
 
 #ifndef RTHREAD_T_H
 #define RTHREAD_T_H
@@ -22,18 +22,20 @@
 #define SCHEDULED 1
 #define BLOCKED 2
 
+/*RITVIK is defining a stack size here. However, I am unsure about this. I referenced makecontext.c for this understanding. Need to confirm with TA...*/
 #define STACK_SIZE SIGSTKSZ
 
 /* include lib header files that you need here: */
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#include <stdio.h> // needed for some stuf in ucontext.h
+#include <stdio.h>
 #include <stdlib.h>
+//I am adding the following libraries
 #include <ucontext.h>
+#include <signal.h> //stack_t uc_stack is defined here
 
 typedef uint rpthread_t;
-
 
 typedef struct threadControlBlock {
 	/* add important states in a thread control block */
@@ -48,9 +50,9 @@ typedef struct threadControlBlock {
 	rpthread_t rpthread_id; //following recommendation on proj pdf
 	int thread_status; //status set to READY, SCHEDULED, or BLOCKED
 	ucontext_t context; //for the context 
-	void* stack; // maybe wrong, following examples for now
+	//void* stack; // maybe wrong, following examples for now
+	//^note from Ritvik: I think we have to save the stack in the context itself. I referenced makecontext.c for this understanding. Need to confirm with TA...
 	int priority; //probably wrong
-	
 } tcb; 
 
 /* mutex struct definition */
@@ -64,6 +66,28 @@ typedef struct rpthread_mutex_t {
 // Feel free to add your own auxiliary data structures (linked list or queue etc...)
 
 // YOUR CODE HERE
+///////////////////////////////////
+//Linked List Implementation
+//struct for node for the queue
+typedef struct qNode
+{
+	tcb data;
+	struct node *next;
+}qNode;
+
+//struct for the queue itself
+typedef struct Queue{
+	qNode *front, *rear;
+}Queue;
+
+//function declrs.
+qNode* newNode(tcb data); //creates a new qNode
+Queue* createQueue(); //creates empty queue 
+void enQueue(Queue* q, tcb data);
+qNode* deQueue(Queue* q);
+
+///////////////////////////////////
+
 
 
 /* Function Declarations: */

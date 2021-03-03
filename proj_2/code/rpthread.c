@@ -1,83 +1,106 @@
 // File:	rpthread.c
 
-// List all group member's name: Bryan Zhu, Ritvik Biswas
-// username of iLab: bjz20
-// iLab Server: ilab3
+// List all group member's name:
+// username of iLab:
+// iLab Server:
 
 #include "rpthread.h"
-#include <ucontext.h>
-#include <signal.h> // need this cuz "stack_t uc_stack" defined here
+
 // INITAILIZE ALL YOUR VARIABLES HERE
+rpthread_t tid = 0;
 // YOUR CODE HERE
 
-//Linked List Implementation
-
-rpthread_t tid = 0;
-
-struct Node{
-	ucontext_t data;
-	struct Node *next;
-};
-
-// Append to end of LL
-void append(struct Node** head, ucontext_t new_data){
-	// malloc node
-	struct Node* new_node = (struct Node*)malloc(sizeof(struct Node));
-	
-	// put in data
-	new_node->data = new_data;
-
-	// last node, so make next NULL
-	new_node->next = NULL;
-
-	// if LL empty, assign as head
-	if (*head == NULL){
-		*head = new_node;
-		return;
-	}
-	
-	// traverse until last node
-	struct Node *last = *head; // start last at head to traverse
-
-	while (last->next != NULL)
-		last = last->next;
-
-	last->next = new_node;
-	return;
+///////////////////////////////////
+//Linked List Helper Methods
+qNode* newNode(tcb data){
+	qNode* temp = (qNode*)malloc(sizeof(qNode)); 
+    temp->data = data; 
+    temp->next = NULL; 
+    return temp;
 }
 
-// init runqueue
-struct Node* runqueue = NULL;
+Queue* createQueue(){
+	Queue* q = (Queue*)malloc(sizeof(Queue)); 
+    q->front = q->rear = NULL; 
+    return q; 
+} 
+
+void enQueue(Queue* q, tcb data){ 
+    qNode* temp = newNode(data); 
+    if (q->rear == NULL) { 
+        q->front = q->rear = temp; 
+        return; 
+    }  
+    q->rear->next = temp; 
+    q->rear = temp; 
+}
+
+qNode* deQueue(Queue* q){
+    if (q->front == NULL) 
+        return; 
+    qNode* temp = q->front; 
+    q->front = q->front->next; 
+    if (q->front == NULL) 
+        q->rear = NULL; 
+    return temp; //remember to free after the dequeue
+}
+
+//intitalize the runqueue
+Queue* runQueue = NULL;
+//initialize current thread TCB
+tcb *currentThreadTCB = NULL;
+///////////////////////////////////
+
 
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, 
                       void *(*function)(void*), void * arg) {
-       // create Thread Control Block
+    	// create Thread Control Block
        // create and initialize the context of this thread
        // allocate space of stack for this thread to run
        // after everything is all set, push this thread int
        // YOUR CODE HERE
-		
 
-		//init TCB
-		tcb thread_control_block;
+	//first initialize the TCB
+	tcb thread_control_block;
 
-		//init thread ID
-		*thread = tid;
-		tid = tid+ 1; // increment global thread ID so no 2 threads have same thread ID
-		thread_control_block.rpthread_id = *thread;//set thread id in TCB
-		thread_control_block.thread_status = READY;//set status in TCB
-		if (getcontext(&thread_control_block.context) < 0){//init context, need this or will segfault
-			perror("getcontext");
-			exit(1);
-		}
-		makecontext(&thread_control_block.context,(void *)&function,0);//prob wrong to put 0, can't figure out how to put void * args into here
-		thread_control_block.stack = malloc(STACK_SIZE);
-		thread_control_block.priority = 0; // prob wrong: default highest
+	//initialize the thread ID
+	*thread = tid;
+	tid = tid+ 1; // increment GLOBAL thread ID so no 2 threads have same thread ID
+	thread_control_block.rpthread_id = *thread;//set thread id in TCB
+	thread_control_block.thread_status = READY;//set status in TCB
+	
+	if (getcontext(&thread_control_block.context) < 0){//init context, need this or will segfault
+		perror("getcontext");
+		exit(1);
+	}
+	//allocate space for the stack
+	void *stack = malloc(STACK_SIZE);
+	if(stack == NULL){
+		perror("Failed to allocate stack");
+		exit(1);
+	}
 
-		//add to runqueue, if first thread ID then it becomes head, tested in node.c
-		append(&runqueue,thread_control_block.context);
+	//setup context to be used
+	thread_control_block.context.uc_link = NULL; //ask TA abt this too
+	thread_control_block.context.ss_sp = stack;
+	thread_control_block.context.ss_size = STACK_SIZE;
+	thread_control_block.context.ss_flags = 0;
 
+	makecontext(&thread_control_block.context,(void *)&function,0);//prob wrong to put 0, can't figure out how to put void * args into here, ask TA
+	thread_control_block.stack = malloc(STACK_SIZE);
+	thread_control_block.priority = 0; // prob wrong: default highest
+
+	//following lines added by Ritvik to address no initial thread being run! Check with Bryan and TA
+	//check if runQueue is NULL
+	if(runQueue == NULL){//if runQueue is NULL, no thread is running at the moment, so set the currentThreadTCB to this thread's TCB and set the context to that thread
+		runQueue = createQueue();
+		currentThreadTCB = &thread_control_block;
+		setContext(&thread_control_block.context);
+	}else{//else enQueue tcb to runQueue
+		enQueue(runQueue,thread_control_block);
+	}
+	
     return 0;
 };
 
@@ -85,11 +108,17 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 int rpthread_yield() {
 	
 	// change thread state from Running to Ready
-	
 	// save context of this thread to its thread control block
 	// wwitch from thread context to scheduler context
 
 	// YOUR CODE HERE
+	/*
+	*	We have a current context running and its TCB is pointed to by currentThreadTCB (global variable)
+	*
+	*	Now we have to change that currentThreadTCB's state to Ready, *save the newest context back into the TCB,
+	*	use swapContext(...) to swap a deQueued context from the runQueue, and then queue the former context into the runQueue
+	*/
+
 	return 0;
 };
 
