@@ -95,6 +95,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	//check if runQueue is NULL
 	if(runQueue == NULL){//if runQueue is NULL, no thread is running at the moment, so set the currentThreadTCB to this thread's TCB and set the context to that thread
 		runQueue = createQueue();
+		thread_control_block.thread_status = SCHEDULED;
 		currentThreadTCB = &thread_control_block;
 		setContext(&thread_control_block.context);
 	}else{//else enQueue tcb to runQueue
@@ -114,10 +115,16 @@ int rpthread_yield() {
 	// YOUR CODE HERE
 	/*
 	*	We have a current context running and its TCB is pointed to by currentThreadTCB (global variable)
-	*
-	*	Now we have to change that currentThreadTCB's state to Ready, *save the newest context back into the TCB,
-	*	use swapContext(...) to swap a deQueued context from the runQueue, and then queue the former context into the runQueue
-	*/
+*/
+	// change currentThreadTCB's state to Ready,
+	*currentThreadTCB.thread_status = READY
+
+	//save the newest context/stack back into the TCB (ASK TA)
+	swapContext(&currentThreadTCB.context,&deQueue(runQueue).data.context);
+
+	//queue the former context into the runQueue
+	enQueue(runQueue,*currentThreadTCB);
+
 
 	return 0;
 };
