@@ -71,7 +71,7 @@ typedef struct rpthread_mutex_t {
 //struct for node for the queue
 typedef struct qNode
 {
-	tcb data;
+	tcb* data;
 	struct qNode *next;
 }qNode;
 
@@ -81,9 +81,9 @@ typedef struct Queue{
 }Queue;
 
 //function declrs.
-qNode* newNode(tcb data); //creates a new qNode
+qNode* newNode(tcb* data); //creates a new qNode
 Queue* createQueue(); //creates empty queue 
-void enQueue(Queue* q, tcb data);
+void enQueue(Queue* q, tcb* data);
 qNode* deQueue(Queue* q);
 
 ///////////////////////////////////

@@ -12,7 +12,7 @@ rpthread_t tid = 0;
 
 ///////////////////////////////////
 //Linked List Helper Methods
-qNode* newNode(tcb data){
+qNode* newNode(tcb* data){
 	qNode* temp = (qNode*)malloc(sizeof(qNode)); 
     temp->data = data; 
     temp->next = NULL; 
@@ -25,7 +25,7 @@ Queue* createQueue(){
     return q; 
 } 
 
-void enQueue(Queue* q, tcb data){ 
+void enQueue(Queue* q, tcb* data){ 
     qNode* temp = newNode(data); 
     if (q->rear == NULL) { 
         q->front = q->rear = temp; 
@@ -42,13 +42,13 @@ qNode* deQueue(Queue* q){
     q->front = q->front->next; 
     if (q->front == NULL) 
         q->rear = NULL; 
-    return temp; //remember to free after the dequeue
+    return temp; //remember to FREE later
 }
 
 //intitalize the runqueue
 Queue* runQueue = NULL;
 //initialize current thread TCB
-tcb *currentThreadTCB = NULL;
+//tcb *currentThreadTCB = NULL; we dont need this anymore...i think
 ///////////////////////////////////
 
 
@@ -60,51 +60,48 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
        // allocate space of stack for this thread to run
        // after everything is all set, push this thread int
        // YOUR CODE HERE
-	puts("pleas work");
-	//first initialize the TCB
-	tcb thread_control_block;
+	printf("pleas work\n");
+	//first initialize the TCB - (change) need to malloc space for this tcb struct
+	tcb* thread_control_block = (tcb*) malloc(sizeof(tcb));
 
 	//initialize the thread ID
 	*thread = tid;
 	tid = tid+ 1; // increment GLOBAL thread ID so no 2 threads have same thread ID
-	thread_control_block.rpthread_id = *thread;//set thread id in TCB
-	thread_control_block.thread_status = READY;//set status in TCB
-	puts("about to make context");
-	if (getcontext(&thread_control_block.context) < 0){//init context, need this or will segfault
+	thread_control_block->rpthread_id = *thread;//set thread id in TCB
+	thread_control_block->thread_status = READY;//set status in TCB
+	printf("about to make context\n");
+	if (getcontext(&thread_control_block->context) < 0){//init context, need this or will segfault
 		perror("getcontext");
 		exit(1);
 	}
 	//allocate space for the stack
-	puts("about ot malloc");
-	void *stack = malloc(STACK_SIZE);
+	printf("about ot malloc\n");
+	void *stack = malloc(STACK_SIZE); //remember to FREE later
 	if(stack == NULL){
 		perror("Failed to allocate stack");
 		exit(1);
 	}
 
 	//setup context to be used
-	thread_control_block.context.uc_link = NULL; //ask TA abt this too
-	thread_control_block.context.uc_stack.ss_sp = stack;
-	thread_control_block.context.uc_stack.ss_size = STACK_SIZE;
-	thread_control_block.context.uc_stack.ss_flags = 0;
+	thread_control_block->context.uc_link = NULL; //ask TA abt this too
+	thread_control_block->context.uc_stack.ss_sp = stack;
+	thread_control_block->context.uc_stack.ss_size = STACK_SIZE;
+	thread_control_block->context.uc_stack.ss_flags = 0;
 
-	makecontext(&thread_control_block.context,(void *)&function,0);//prob wrong to put 0, can't figure out how to put void * args into here, ask TA
-	thread_control_block.priority = 0; // prob wrong: default highest
-
+	makecontext(&thread_control_block->context,(void *)&function,0);//prob wrong to put 0, can't figure out how to put void * args into here, ask TA
+	thread_control_block->priority = 0; // prob wrong: default highest
+	
+	setcontext(&thread_control_block->context);
 	//following lines added by Ritvik to address no initial thread being run! Check with Bryan and TA
 	//check if runQueue is NULL
-	puts("about to runqueue");
+	printf("about to do the runqueue stuff for 'create'...\n");
 	if(runQueue == NULL){//if runQueue is NULL, no thread is running at the moment, so set the currentThreadTCB to this thread's TCB and set the context to that thread
+		printf("Made a runqueue...");
 		runQueue = createQueue();
-		thread_control_block.thread_status = SCHEDULED;
-		currentThreadTCB = &thread_control_block;
-		puts("about to setcontext");
-		setcontext(&thread_control_block.context);
-	}else{//else enQueue tcb to runQueue
-		puts("about ot enqueue");
-		enQueue(runQueue,thread_control_block);
 	}
-	
+	printf("about to enqueue tcb\n");
+	enQueue(runQueue,thread_control_block);
+	printf("Done creating the thread and added to runqueue...");
     return 0;
 };
 
@@ -116,17 +113,14 @@ int rpthread_yield() {
 	// wwitch from thread context to scheduler context
 
 	// YOUR CODE HERE
-	/*
-	*	We have a current context running and its TCB is pointed to by currentThreadTCB (global variable)
-*/
-	// change currentThreadTCB's state to Ready,
-    currentThreadTCB->thread_status = READY;
-
-	//save the newest context/stack back into the TCB (ASK TA)
-	swapcontext(&(currentThreadTCB->context),&(deQueue(runQueue)->data.context));
-
-	//queue the former context into the runQueue
-	enQueue(runQueue,*currentThreadTCB);
+	/********************
+	 * (1)  We need to get the current running thread's context and set it's state from RUNNING to READY
+	 * (2)  Dequeue a new tcb, enqueue the old tcb, use swapcontext() to swap the current and new contexts (I'm pretty sure swap context saves the stack for us...)
+	 * 
+	 * But should we do this in this method or call the scheduler to do so.
+	 *
+	 * I think that the swap should be done in the scheduler and that I should simply just switch to that context
+	 */
 
 
 	return 0;
@@ -137,6 +131,17 @@ void rpthread_exit(void *value_ptr) {
 	// Deallocated any dynamic memory created when starting this thread
 
 	// YOUR CODE HERE
+	/********************
+	 * So here we need to exit out of the thread
+	 * Clean up everything malloced...
+	 * - FREE the malloced stack in the tcb context
+	 * - FREE the qNode that was going in the runqueue everytime
+	 *
+	 * So far this is all I could think of...
+	 *
+	 * The actual switching context, should be done by the scheduler itself - need to figure that out
+	 */
+
 };
 
 
@@ -221,6 +226,11 @@ static void sched_rr() {
 	// (feel free to modify arguments and return types)
 
 	// YOUR CODE HERE
+	/****************
+	 * I'm going to start with a simple FCFS scheduler to test my threads...
+	 *
+	 *
+	 */
 }
 
 /* Preemptive MLFQ scheduling algorithm */
