@@ -8,7 +8,7 @@ void foo(){
 	printf("FOO starting!!!\n");
 	while(1){
 		puts("foo");
-		usleep(100000);//0.1 sec
+	//	usleep(100000);//0.1 sec
 	}
 }
 
@@ -16,7 +16,7 @@ void bar(){
 	printf("BAR starting!!!\n");
 	while(1){
 		puts("bar");
-		usleep(100000);
+	//	usleep(100000);
 	}
 }
 
@@ -47,7 +47,8 @@ int main(int argc, char** argv){
 	struct sigaction sa;
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = &signal_handler;
-	sigaction(SIGPROF,&sa, NULL);
+    sigaction(SIGPROF,&sa, NULL);
+//	sigaction(SIGALRM,&sa, NULL);
 
 	// init timer
 	struct itimerval timer;
@@ -59,7 +60,8 @@ int main(int argc, char** argv){
 	timer.it_value.tv_sec=1;
 		
 	// enable timer
-	setitimer(ITIMER_REAL,&timer,NULL);
+	setitimer(ITIMER_PROF,&timer,NULL);
+//	setitimer(ITIMER_REAL,&timer,NULL);
 	
 	// never going back to m_ctx so don't need inf loop
 	setcontext(&ctx[0]);

@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
 
 	long long limit = atoll(argv[1]);
 
-	pthread_t tid;
+	rpthread_t tid;
 
 	pthread_attr_t attr;
 	//pthread_attr_init(&attr);

@@ -21,12 +21,15 @@ qNode* newNode(tcb data){
 
 Queue* createQueue(){
 	Queue* q = (Queue*)malloc(sizeof(Queue)); 
-    q->front = q->rear = NULL; 
+    q->front = q->rear = NULL;
+	q->size = 0;
     return q; 
 } 
 
-void enQueue(Queue* q, tcb data){ 
-    qNode* temp = newNode(data); 
+void enQueue(Queue* q, tcb data){
+	// malloc new data
+    qNode* temp = (qNode *)
+	newNode(data); 
     if (q->rear == NULL) { 
         q->front = q->rear = temp; 
         return; 
