@@ -11,19 +11,36 @@
  * You can modify and use this program as much as possible.
  * This will not be graded.
  */
-long long sum = 0;
+long long sum1 = 0;
+long long sum2 = 0;
 
-void* sum_runner(){
-	printf("In sum_runner!\n");
+void* sum_runner1(){
+	printf("In sum_runner 1!\n");
 	//long long *limit_ptr = (long long*) arg;
 	//long long limit = *limit_ptr;
 
-	for (long long i= 0; i <=5; i++){
-		sum += i;
+	for (long long i= 0; i <=90; i++){
+		sum1 += i;
 	}
-	printf("Sum is %d\n", sum);
-	//pthread_exit(0);
+	//rpthread_yield();
+	printf("Sum 1 is %d\n", sum1);
+	pthread_exit(0);
 }
+
+void* sum_runner2(){
+        printf("In sum_runner 2!\n");
+        //long long *limit_ptr = (long long*) arg;
+        //long long limit = *limit_ptr;
+
+        for (long long i= 0; i <=5; i++){
+                sum2 += i;
+        }
+	//rpthread_yield();
+        printf("Sum 2 is %d\n", sum2);
+        pthread_exit(0);
+}
+
+
 int main(int argc, char **argv) {
 	printf("In main!\n");
 	/*
@@ -40,10 +57,14 @@ int main(int argc, char **argv) {
 	//pthread_attr_init(&attr);
 	
 	printf("Bouta create the pthread\n");
-	pthread_create(&tid,NULL,sum_runner,NULL);
+	pthread_create(&tid,NULL,sum_runner1,NULL);
 
-	//pthread_join(tid,NULL);
-	printf("Sum is %lld\n",sum);
+	pthread_create(&tid, NULL, sum_runner2,NULL);
+	pthread_join(tid,NULL);
+	printf("Sum is %lld\n",sum1);
+	//rpthread_yield();
+	//rpthread_yield();
+	printf("Main done\n");
 
 	return 0;
 }

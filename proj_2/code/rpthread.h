@@ -21,6 +21,7 @@
 #define READY 0
 #define SCHEDULED 1
 #define BLOCKED 2
+#define DONE 3
 
 /*RITVIK is defining a stack size here. However, I am unsure about this. I referenced makecontext.c for this understanding. Need to confirm with TA...*/
 #define STACK_SIZE SIGSTKSZ
@@ -34,6 +35,8 @@
 //I am adding the following libraries
 #include <ucontext.h>
 #include <signal.h> //stack_t uc_stack is defined here
+#include <string.h>
+#include <sys/time.h>
 
 typedef uint rpthread_t;
 
@@ -48,7 +51,7 @@ typedef struct threadControlBlock {
 
 	// YOUR CODE HERE
 	rpthread_t rpthread_id; //following recommendation on proj pdf
-	int thread_status; //status set to READY, SCHEDULED, or BLOCKED
+	int thread_status; //status set to READY, SCHEDULED, or BLOCKED, or (added by RITVIK) DONE
 	ucontext_t context; //for the context 
 	//void* stack; // maybe wrong, following examples for now
 	//^note from Ritvik: I think we have to save the stack in the context itself. I referenced makecontext.c for this understanding. Need to confirm with TA...
@@ -85,7 +88,8 @@ qNode* newNode(tcb* data); //creates a new qNode
 Queue* createQueue(); //creates empty queue 
 void enQueue(Queue* q, tcb* data);
 qNode* deQueue(Queue* q);
-
+int isQueueEmpty(Queue* q);
+qNode* isThread(rpthread_t t, Queue* q);
 ///////////////////////////////////
 
 
@@ -117,6 +121,16 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex);
 
 /* destroy the mutex */
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex);
+
+/*RR Scheduler*/
+static void sched_rr();
+
+/*make context helper for rpthread_create*/
+void makeSchContext();
+
+/*signal handler*/
+void schedule_handler(int signum); 
+
 
 #ifdef USE_RTHREAD
 #define pthread_t rpthread_t
