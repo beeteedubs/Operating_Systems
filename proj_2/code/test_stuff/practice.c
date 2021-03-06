@@ -8,7 +8,11 @@ void foo(){
 	printf("FOO starting!!!\n");
 	while(1){
 		puts("foo");
+<<<<<<< HEAD:proj_2/code/test_stuff/practice.c
 	//	usleep(100000);//0.1 sec
+=======
+		usleep(100);//0.1 sec
+>>>>>>> ec67175c62abca4427b0563cc4b8a2c74b415826:proj_2/code/practice.c
 	}
 }
 
@@ -16,7 +20,11 @@ void bar(){
 	printf("BAR starting!!!\n");
 	while(1){
 		puts("bar");
+<<<<<<< HEAD:proj_2/code/test_stuff/practice.c
 	//	usleep(100000);
+=======
+		usleep(100);
+>>>>>>> ec67175c62abca4427b0563cc4b8a2c74b415826:proj_2/code/practice.c
 	}
 }
 
@@ -52,16 +60,19 @@ int main(int argc, char** argv){
 
 	// init timer
 	struct itimerval timer;
-	// run signal every 1 second
-	timer.it_interval.tv_usec = 0;
-	timer.it_interval.tv_sec = 1;
+	// run signal every 250 msecs
+	timer.it_interval.tv_usec = 5000;
+	timer.it_interval.tv_sec = 0;
 	// start timer at
-	timer.it_value.tv_usec=0;
-	timer.it_value.tv_sec=1;
+	timer.it_value.tv_usec = 5000;
+	timer.it_value.tv_sec = 0;
 		
 	// enable timer
 	setitimer(ITIMER_PROF,&timer,NULL);
+<<<<<<< HEAD:proj_2/code/test_stuff/practice.c
 //	setitimer(ITIMER_REAL,&timer,NULL);
+=======
+>>>>>>> ec67175c62abca4427b0563cc4b8a2c74b415826:proj_2/code/practice.c
 	
 	// never going back to m_ctx so don't need inf loop
 	setcontext(&ctx[0]);

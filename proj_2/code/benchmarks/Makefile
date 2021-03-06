@@ -13,7 +13,7 @@ external_cal:
 	$(CC) $(CFLAGS) -pthread -o external_cal external_cal.c -L../ -lrpthread
 
 test:
-	$(CC) $(CFLAGS) -pthread -o test test.c -L../ -lrpthread
+	$(CC) $(CFLAGS) -pthread -o test test.c -L../ -lrpthread -g
 
 clean:
 	rm -rf testcase test parallel_cal vector_multiply external_cal *.o ./record/
