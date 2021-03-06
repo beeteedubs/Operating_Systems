@@ -70,7 +70,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	tid = tid+ 1; // increment GLOBAL thread ID so no 2 threads have same thread ID
 	thread_control_block->rpthread_id = *thread;//set thread id in TCB
 	thread_control_block->thread_status = READY;//set status in TCB
-	printf("about to make context\n");
+	printf("about to get context\n");
 	if (getcontext(&thread_control_block->context) < 0){//init context, need this or will segfault
 		perror("getcontext");
 		exit(1);
@@ -92,7 +92,6 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	makecontext(&(thread_control_block->context),(void*)function,0);//prob wrong to put 0, can't figure out how to put void * args into here, ask TA
 	thread_control_block->priority = 0; // prob wrong: default highest
 	printf("about to set contest\n");
-	setcontext(&(thread_control_block->context));
 	//following lines added by Ritvik to address no initial thread being run! Check with Bryan and TA
 	//check if runQueue is NULL
 	printf("about to do the runqueue stuff for 'create'...\n");
@@ -103,6 +102,8 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	printf("about to enqueue tcb\n");
 	enQueue(runQueue,thread_control_block);
 	printf("Done creating the thread and added to runqueue...");
+	setcontext(&(deQueue(runQueue)->data->context));
+
     return 0;
 };
 
@@ -123,7 +124,11 @@ int rpthread_yield() {
 	 * I think that the swap should be done in the scheduler and that I should simply just switch to that context
 	 */
 	
-	// get curr 
+	// get curr context
+	qNode* temp_node = deQueue(runQueue);
+	temp_node->data->thread_status = READY;
+
+	enQueue(runQueue,temp_node->data);
 
 
 	return 0;
@@ -133,6 +138,12 @@ int rpthread_yield() {
 void rpthread_exit(void *value_ptr) {
 	// Deallocated any dynamic memory created when starting this thread
 
+	// dequeue
+	qNode* temp_node = deQueue(runQueue);
+	
+	// free
+	free(temp_node->data->context.uc_stack.ss_sp);
+	free(temp_node->data);
 	// YOUR CODE HERE
 	/********************
 	 * So here we need to exit out of the thread
@@ -155,6 +166,8 @@ int rpthread_join(rpthread_t thread, void **value_ptr) {
 	// de-allocate any dynamic memory created by the joining thread
   
 	// YOUR CODE HERE
+	// check thread is still in queue, if so add this thread
+
 	return 0;
 };
 
