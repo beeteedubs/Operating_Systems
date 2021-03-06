@@ -88,11 +88,11 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	thread_control_block->context.uc_stack.ss_sp = stack;
 	thread_control_block->context.uc_stack.ss_size = STACK_SIZE;
 	thread_control_block->context.uc_stack.ss_flags = 0;
-
-	makecontext(&thread_control_block->context,(void *)function,0);//prob wrong to put 0, can't figure out how to put void * args into here, ask TA
+	printf("About to make context\n");
+	makecontext(&(thread_control_block->context),(void*)function,0);//prob wrong to put 0, can't figure out how to put void * args into here, ask TA
 	thread_control_block->priority = 0; // prob wrong: default highest
-	
-	setcontext(&thread_control_block->context);
+	printf("about to set contest\n");
+	setcontext(&(thread_control_block->context));
 	//following lines added by Ritvik to address no initial thread being run! Check with Bryan and TA
 	//check if runQueue is NULL
 	printf("about to do the runqueue stuff for 'create'...\n");
@@ -122,6 +122,8 @@ int rpthread_yield() {
 	 *
 	 * I think that the swap should be done in the scheduler and that I should simply just switch to that context
 	 */
+	
+	// get curr 
 
 
 	return 0;
