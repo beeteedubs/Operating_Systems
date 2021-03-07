@@ -36,7 +36,7 @@ void yourturn(){
 	}
 }
 
-void* sum_runner(void* args){
+void* sum_runner1(void* args){
 	printf("In sum_runner!\n");
 
 	for (long long i= 0; i <=90; i++){
