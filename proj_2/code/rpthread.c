@@ -31,7 +31,7 @@ Queue* createQueue(){
 	Queue* q = (Queue*)malloc(sizeof(Queue)); 
     	q->front = q->rear = NULL; 
     	return q; 
-}
+} 
 
 void enQueue(Queue* q, tcb* data){ 
 	qNode* temp = newNode(data); 
@@ -100,7 +100,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	thread_control_block->rpthread_id = *thread;//set thread id in TCB
 	printf("This new thread's ID is: %u\n", thread_control_block->rpthread_id);//DEBUG line idk if this works yet...
 	thread_control_block->thread_status = READY;//set status in TCB
-	printf("about to get context\n");
+	printf("about to make context\n");
 	if (getcontext(&thread_control_block->context) < 0){//init context, need this or will segfault
 		perror("getcontext");
 		exit(1);
@@ -124,12 +124,6 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	
 	//setcontext(&thread_control_block->context); LINE USED TO DEBUG AND PROVE PTHREAD CREATE CREATES A CONTEXT THAT CAN BE SWITCHED TO...
 	
-	printf("About to make context\n");
-	makecontext(&(thread_control_block->context),(void*)function,0);//prob wrong to put 0, can't figure out how to put void * args into here, ask TA
-	thread_control_block->priority = 0; // prob wrong: default highest
-	printf("about to set contest\n");
-	//following lines added by Ritvik to address no initial thread being run! Check with Bryan and TA
-	//check if runQueue is NULL
 	printf("about to do the runqueue stuff for 'create'...\n");
 	if(runQueue == NULL){
 		printf("Made a runqueue...\n");
@@ -137,14 +131,13 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	}
 	printf("about to enqueue tcb\n");
 	enQueue(runQueue,thread_control_block);
-
 	printf("Done creating the thread and added to runqueue...\n");
 
 	/**************
 	 * FIRST RUN CASE:
 	 * now we must create a scheduler context to swap into when needed
 	 * also I need to create a context for main and put it in the runQueue itself...but that means make a tcb itself for the main?
-kkkk	 */
+	 */
 	if(check_sch_ctx == 0){//then create the context, else it already exists and DO NOTHING
 		printf("Scheduler Context not found...now making one!\n");
 		check_sch_ctx += 1; //1 means schedule context exists
@@ -188,6 +181,7 @@ kkkk	 */
     return 0;
 };
 
+/* give CPU possession to other user-level threads voluntarily */
 int rpthread_yield() {
 	
 	// change thread state from Running to Ready
@@ -212,14 +206,9 @@ int rpthread_yield() {
 };
 
 /* terminate a thread */
+void rpthread_exit(void *value_ptr) {
 	// Deallocated any dynamic memory created when starting this thread
 
-	// dequeue
-	qNode* temp_node = deQueue(runQueue);
-	
-	// free
-	free(temp_node->data->context.uc_stack.ss_sp);
-	free(temp_node->data);
 	// YOUR CODE HERE
 	/********************
 	 * So here we need to exit out of the thread
@@ -245,7 +234,6 @@ int rpthread_join(rpthread_t thread, void **value_ptr) {
 	// de-allocate any dynamic memory created by the joining thread
   
 	// YOUR CODE HERE
-
 	//first find given thread
 	printf("rpthread join called..find thread..wait until it is DONE...continue\n");
 	qNode* found_thread = isThread(thread, runQueue);
@@ -254,10 +242,7 @@ int rpthread_join(rpthread_t thread, void **value_ptr) {
 		return 1;
 	}
 	while(found_thread->data->thread_status != DONE){
-	}//loop until found_thread is donkkk
-	// check thread is still in queue, if so add this thread
-
-
+	}//loop until found_thread is done
 	return 0;
 };
 
