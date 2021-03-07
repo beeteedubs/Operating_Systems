@@ -15,10 +15,6 @@
 long long sum1 = 0;
 long long sum2 = 0;
 
-void* sum_runner1(){
-	printf("In sum_runner 1!\n");
-	//long long *limit_ptr = (long long*) arg;
-	//long long limit = *limit_ptr;
 long long sum = 0;
 
 void* myturn(void* args){
@@ -78,11 +74,11 @@ int main(int argc, char **argv) {
 	//rpthread_yield();
 	//rpthread_yield();
 	printf("Main done\n");
-	pthread_create(&tid,NULL,myturn,NULL);
+	//pthread_create(&tid,NULL,myturn,NULL);
 	//pthread_create(&tid,NULL,sum_runner,NULL);
-	yourturn();
-	pthread_join(tid,NULL);
-	printf("Sum is %lld\n",sum);
+	//yourturn();
+	//pthread_join(tid,NULL);
+	//printf("Sum is %lld\n",sum);
 
 
 	return 0;
