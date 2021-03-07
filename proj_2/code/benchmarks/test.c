@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include "../rpthread.h"
 
+
 /* A scratch program template on which to call and
  * test rpthread library functions as you implement
  * them.
@@ -18,12 +19,33 @@ void* sum_runner1(){
 	printf("In sum_runner 1!\n");
 	//long long *limit_ptr = (long long*) arg;
 	//long long limit = *limit_ptr;
+long long sum = 0;
+
+void* myturn(void* args){
+	for(int i = 0; i<8; i++){
+		sleep(1);
+		printf("myturn\n");
+	}
+	return NULL;
+}
+
+void yourturn(){
+	for(int i = 0; i<8; i++){
+		sleep(1);
+		printf("yourturn\n");
+	}
+}
+
+void* sum_runner(void* args){
+	printf("In sum_runner!\n");
 
 	for (long long i= 0; i <=90; i++){
 		sum1 += i;
 	}
 	//rpthread_yield();
 	printf("Sum 1 is %d\n", sum1);
+	printf("Sum == %d\n", sum);
+
 	pthread_exit(0);
 }
 
@@ -43,20 +65,11 @@ void* sum_runner2(){
 
 int main(int argc, char **argv) {
 	printf("In main!\n");
-	/*
-	if (argc < 2){
-			printf("Usage: %s <num>\n",argv[0]);
-			exit(-1);
-	}
-	*/
-	//long long limit = atoll(argv[1]);
 
 	pthread_t tid;
 
-	//pthread_attr_t attr;
-	//pthread_attr_init(&attr);
-	
 	printf("Bouta create the pthread\n");
+
 	pthread_create(&tid,NULL,sum_runner1,NULL);
 
 	pthread_create(&tid, NULL, sum_runner2,NULL);
@@ -65,6 +78,12 @@ int main(int argc, char **argv) {
 	//rpthread_yield();
 	//rpthread_yield();
 	printf("Main done\n");
+	pthread_create(&tid,NULL,myturn,NULL);
+	//pthread_create(&tid,NULL,sum_runner,NULL);
+	yourturn();
+	pthread_join(tid,NULL);
+	printf("Sum is %lld\n",sum);
+
 
 	return 0;
 }

@@ -53,7 +53,7 @@ typedef struct threadControlBlock {
 	rpthread_t rpthread_id; //following recommendation on proj pdf
 	int thread_status; //status set to READY, SCHEDULED, or BLOCKED, or (added by RITVIK) DONE
 	ucontext_t context; //for the context 
-	//void* stack; // maybe wrong, following examples for now
+	void* stack; // maybe wrong, following examples for now
 	//^note from Ritvik: I think we have to save the stack in the context itself. I referenced makecontext.c for this understanding. Need to confirm with TA...
 	int priority; //probably wrong
 } tcb; 
@@ -81,6 +81,7 @@ typedef struct qNode
 //struct for the queue itself
 typedef struct Queue{
 	qNode *front, *rear;
+	int size;
 }Queue;
 
 //function declrs.

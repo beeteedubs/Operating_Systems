@@ -1,4 +1,4 @@
-#include "basics.h"
+#include "../basics.h"
 
 #define STACK_SIZE SIGSTKSZ
 unsigned ctx_id = 0;
@@ -8,7 +8,7 @@ void foo(){
 	printf("FOO starting!!!\n");
 	while(1){
 		puts("foo");
-		usleep(100);//0.1 sec
+		usleep(100000);//0.1 see
 	}
 }
 
@@ -16,7 +16,7 @@ void bar(){
 	printf("BAR starting!!!\n");
 	while(1){
 		puts("bar");
-		usleep(100);
+		usleep(100000);
 	}
 }
 
@@ -47,19 +47,21 @@ int main(int argc, char** argv){
 	struct sigaction sa;
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = &signal_handler;
-	sigaction(SIGPROF,&sa, NULL);
+//    sigaction(SIGPROF,&sa, NULL);
+	sigaction(SIGALRM,&sa, NULL);
 
 	// init timer
 	struct itimerval timer;
 	// run signal every 250 msecs
-	timer.it_interval.tv_usec = 5000;
-	timer.it_interval.tv_sec = 0;
+	timer.it_interval.tv_usec = 0;
+	timer.it_interval.tv_sec = 1;
 	// start timer at
-	timer.it_value.tv_usec = 5000;
-	timer.it_value.tv_sec = 0;
+	timer.it_value.tv_usec = 0;
+	timer.it_value.tv_sec = 1;
 		
 	// enable timer
-	setitimer(ITIMER_PROF,&timer,NULL);
+//	setitimer(ITIMER_PROF,&timer,NULL);
+	setitimer(ITIMER_REAL,&timer,NULL);
 	
 	// never going back to m_ctx so don't need inf loop
 	setcontext(&ctx[0]);
