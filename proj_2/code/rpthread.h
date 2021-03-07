@@ -1,8 +1,8 @@
 // File:	rpthread_t.h
 
-// List all group member's name: Bryan Zhu, Ritvik Biswas
-// username of iLab: bjz20
-// iLab Server: ilab3
+// List all group member's name: Ritvik Biswas, Bryan Zhu
+// username of iLab:
+// iLab Server:
 
 #ifndef RTHREAD_T_H
 #define RTHREAD_T_H
@@ -21,19 +21,24 @@
 #define READY 0
 #define SCHEDULED 1
 #define BLOCKED 2
+#define DONE 3
 
+/*RITVIK is defining a stack size here. However, I am unsure about this. I referenced makecontext.c for this understanding. Need to confirm with TA...*/
 #define STACK_SIZE SIGSTKSZ
 
 /* include lib header files that you need here: */
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#include <stdio.h> // needed for some stuf in ucontext.h
+#include <stdio.h>
 #include <stdlib.h>
+//I am adding the following libraries
 #include <ucontext.h>
+#include <signal.h> //stack_t uc_stack is defined here
+#include <string.h>
+#include <sys/time.h>
 
 typedef uint rpthread_t;
-rpthread_t tid = 0;
 
 typedef struct threadControlBlock {
 	/* add important states in a thread control block */
@@ -46,11 +51,11 @@ typedef struct threadControlBlock {
 
 	// YOUR CODE HERE
 	rpthread_t rpthread_id; //following recommendation on proj pdf
-	int thread_status; //status set to READY, SCHEDULED, or BLOCKED
+	int thread_status; //status set to READY, SCHEDULED, or BLOCKED, or (added by RITVIK) DONE
 	ucontext_t context; //for the context 
 	void* stack; // maybe wrong, following examples for now
+	//^note from Ritvik: I think we have to save the stack in the context itself. I referenced makecontext.c for this understanding. Need to confirm with TA...
 	int priority; //probably wrong
-	
 } tcb; 
 
 /* mutex struct definition */
@@ -64,6 +69,30 @@ typedef struct rpthread_mutex_t {
 // Feel free to add your own auxiliary data structures (linked list or queue etc...)
 
 // YOUR CODE HERE
+///////////////////////////////////
+//Linked List Implementation
+//struct for node for the queue
+typedef struct qNode
+{
+	tcb* data;
+	struct qNode *next;
+}qNode;
+
+//struct for the queue itself
+typedef struct Queue{
+	qNode *front, *rear;
+	int size;
+}Queue;
+
+//function declrs.
+qNode* newNode(tcb* data); //creates a new qNode
+Queue* createQueue(); //creates empty queue 
+void enQueue(Queue* q, tcb* data);
+qNode* deQueue(Queue* q);
+int isQueueEmpty(Queue* q);
+qNode* isThread(rpthread_t t, Queue* q);
+///////////////////////////////////
+
 
 
 /* Function Declarations: */
@@ -93,6 +122,16 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex);
 
 /* destroy the mutex */
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex);
+
+/*RR Scheduler*/
+static void sched_rr();
+
+/*make context helper for rpthread_create*/
+void makeSchContext();
+
+/*signal handler*/
+void schedule_handler(int signum); 
+
 
 #ifdef USE_RTHREAD
 #define pthread_t rpthread_t
