@@ -222,6 +222,8 @@ void rpthread_exit(void *value_ptr) {
 	 */
 	printf("rpthread exit called...let go of CPU...mark thread as DONE...move back to scheduler for next job!\n");
 	currentThreadTCB->thread_status = DONE;
+	
+	// restart timer
 	setitimer(ITIMER_PROF, &start, NULL);
 	setcontext(&schedule_context);
 };
