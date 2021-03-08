@@ -40,6 +40,8 @@
 
 typedef uint rpthread_t;
 
+
+
 typedef struct threadControlBlock {
 	/* add important states in a thread control block */
 	// thread Id
@@ -57,18 +59,6 @@ typedef struct threadControlBlock {
 	//^note from Ritvik: I think we have to save the stack in the context itself. I referenced makecontext.c for this understanding. Need to confirm with TA...
 	int priority; //probably wrong
 } tcb; 
-
-/* mutex struct definition */
-typedef struct rpthread_mutex_t {
-	/* add something here */
-
-	// YOUR CODE HERE
-	tcb* owner;
-	tcb* front;
-	tcb* rear;
-
-	volatile int isLocked;
-} rpthread_mutex_t;
 
 /* define your data structures here: */
 // Feel free to add your own auxiliary data structures (linked list or queue etc...)
@@ -96,10 +86,18 @@ qNode* deQueue(Queue* q);
 int isQueueEmpty(Queue* q);
 qNode* isThread(rpthread_t t, Queue* q);
 ///////////////////////////////////
-
-
-
 /* Function Declarations: */
+/* mutex struct definition */
+typedef struct rpthread_mutex_t {
+	/* add something here */
+
+	// YOUR CODE HERE
+	tcb* curr_thread;
+	Queue*  wait_queue;
+
+	volatile int isLocked;
+} rpthread_mutex_t;
+
 
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, void

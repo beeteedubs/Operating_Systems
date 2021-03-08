@@ -23,8 +23,11 @@ void* start_counting(void* arg){
 	}
 	pthread_exit(0);
 }
+
+
 int main (int argc, char** argv){
 	int i = 0;
+	
 	pthread_t *thread_group = malloc(sizeof(pthread_t)*MAX_CORES);
 
 	pthread_mutex_init(&lock,NULL);
@@ -35,7 +38,16 @@ int main (int argc, char** argv){
 	
 	for(i = 0; i < MAX_CORES; i++){
 		pthread_join(thread_group[i],NULL);
-	}
+	}/*
+	int a = 5;
+	int *ptr = &a;
+	printf("curr contents: %d\n",*ptr);
+	printf("calling it\n");
+	__sync_lock_test_and_set(ptr,1);
+	while(__sync_lock_test_and_set(ptr,1)==1){
+		sleep(1);
+		printf("prev contents: %d\n",*ptr);
+	}*/
 	printf("Final total: %lld\n",total);
 	return 0;
 }

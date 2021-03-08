@@ -7,10 +7,12 @@
 #include "rpthread.h"
 
 // INITAILIZE ALL YOUR VARIABLES HERE
-rpthread_t tid = 0; //GLOBAL for thread IDs
-ucontext_t schedule_context = (ucontext_t*)malloc(sizeof(ucontext_t)); //GLOBAL for scheduler context to be initialized when first thread is created...
+rpthread_t tid = 0; // thread IDs, increment w/ each pthread create call
+ucontext_t schedule_context;//(ucontext_t*)malloc(sizeof(ucontext_t)); //scheduler context to init w/ first pthread create call
+
 int check_sch_ctx = 0; //GLOBAL to check if schedule_context has no context (I found out we can't initialize to NULL) -> if 0 then empty
 Queue* runQueue = NULL; //GLOBAL for the runQueue that scheduler will grab contexts from
+Queue* blockQueue = NULL; // queue of blocked contexts from mutex lock
 struct itimerval start; //GLOBAL for timer start value for scheduling
 struct itimerval stop;  //GLOABL for timer stop value for scheduling
 //initialize current thread TCB
@@ -114,12 +116,12 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	}
 
 	//setup context to be used
-	thread_control_block->context.uc_link = NULL; //ask TA abt this too
+	thread_control_block->context.uc_link = NULL;//let runQueue take care of this
 	thread_control_block->context.uc_stack.ss_sp = stack;
 	thread_control_block->context.uc_stack.ss_size = STACK_SIZE;
 	thread_control_block->context.uc_stack.ss_flags = 0;
 
-	makecontext(&thread_control_block->context,(void*)function,0);//prob wrong to put 0, can't figure out how to put void * args into here, ask TA
+	makecontext(&thread_control_block->context,(void*)function,1,arg);// could be wrong
 	thread_control_block->priority = 0; // prob wrong: default highest
 	
 	//setcontext(&thread_control_block->context); LINE USED TO DEBUG AND PROVE PTHREAD CREATE CREATES A CONTEXT THAT CAN BE SWITCHED TO...
@@ -136,7 +138,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	/**************
 	 * FIRST RUN CASE:
 	 * now we must create a scheduler context to swap into when needed
-	 * also I need to create a context for main and put it in the runQueue itself...but that means make a tcb itself for the main?
+	 * create a context for main and put it in the runQueue itself...but that means make a tcb itself for the main?
 	 */
 	if(check_sch_ctx == 0){//then create the context, else it already exists and DO NOTHING
 		printf("Scheduler Context not found...now making one!\n");
@@ -259,16 +261,15 @@ int rpthread_mutex_init(rpthread_mutex_t *mutex,
 		return -1;
 	}
 
-	// malloc space
-	mutex = (rpthread_mutex_t*)malloc(sizeof(rpthread_mutext_t));
+	// DO WE EVEN NEED THIS?
+	mutex = (rpthread_mutex_t*)malloc(sizeof(rpthread_mutex_t));
 
 	// keep track of tcb's of threads waiting next in line
 	mutex->curr_thread = NULL;
-	mutex->front = (tcb*)malloc(sizeof(tcb));
-	mutex->rear = (tcb*)malloc(sizeof(tcb));
+	mutex->wait_queue = (Queue*)malloc(sizeof(Queue));
 
 	// keep track if locked or not
-	mutext->isLocked = 0;
+	mutex->isLocked = 0;
 
 	return 0;
 };
@@ -281,11 +282,25 @@ int rpthread_mutex_lock(rpthread_mutex_t *mutex) {
         // context switch to the scheduler thread
 
         // YOUR CODE HERE
+
+		// loop stops other threads by switching to scheduler
+		// loop doesn't run for first thread
 		while(__sync_lock_test_and_set(&(mutex->isLocked),1)==1){
 			// add curr thread into mutex's queue
-			mutex_enQueue(
+			enQueue(mutex->wait_queue, currentThreadTCB);
+
+			// change status to blocked
+			currentThreadTCB->thread_status = BLOCKED;
+
+			// switch to scheduler
+			swapcontext(&(currentThreadTCB->context),&(schedule_context));
+		}
+
+		// first thread that calls lock only runs this line
+		mutex->curr_thread = currentThreadTCB;
         return 0;
 };
+
 
 /* release the mutex lock */
 int rpthread_mutex_unlock(rpthread_mutex_t *mutex) {
@@ -294,6 +309,27 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex) {
 	// so that they could compete for mutex later.
 
 	// YOUR CODE HERE
+	
+	// if not current thread not mutex's curr_thread, return -1
+	if(mutex->curr_thread != currentThreadTCB){
+		return -1;
+	}else{// is mutex's curr_thread and already locked
+
+		// add wait_queue to runqueue
+
+		// while wait_queue's front has a next
+		while(mutex->wait_queue->front->next != NULL){
+			qNode *tempNode = deQueue(mutex->wait_queue);
+			tempNode->data->thread_status = READY;
+			enQueue(runQueue,tempNode->data);
+		}
+	}
+
+		// put mutex into unlocked state
+		mutex->isLocked = 0;
+		mutex->curr_thread = NULL;
+
+
 	return 0;
 };
 
@@ -361,6 +397,8 @@ static void schedule() {
 			printf("Not DONE, Queueing it back into the runQueue");
 			currentThreadTCB->thread_status = READY;
 			enQueue(runQueue, currentThreadTCB);
+		}else if(currentThreadTCB->thread_status == BLOCKED){
+			enQueue(blockQueue,currentThreadTCB);
 		}
 	}
 

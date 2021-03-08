@@ -15,5 +15,8 @@ external_cal:
 test:
 	$(CC) $(CFLAGS) -pthread -o test test.c -L../ -lrpthread -g
 
+test2:
+	$(CC) $(CFLAGS) -pthread -o test2 test2.c -L../ -lrpthread -g
+
 clean:
-	rm -rf testcase test parallel_cal vector_multiply external_cal *.o ./record/
+	rm -rf testcase test test2  parallel_cal vector_multiply external_cal *.o ./record/
