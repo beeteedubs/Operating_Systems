@@ -39,8 +39,7 @@ void* sum_runner1(void* args){
 		sum1 += i;
 	}
 	//rpthread_yield();
-	printf("Sum 1 is %d\n", sum1);
-	printf("Sum == %d\n", sum);
+	printf("Sum 1 is %d, FINISHED SR1\n\n\n", sum1);
 
 	pthread_exit(0);
 }
@@ -70,7 +69,7 @@ int main(int argc, char **argv) {
 
 	pthread_create(&tid, NULL, sum_runner2,NULL);
 	pthread_join(tid,NULL);
-	printf("Sum is %lld\n",sum1);
+	printf("Sum 1 is %lld\n",sum1);
 	//rpthread_yield();
 	//rpthread_yield();
 	printf("Main done\n");

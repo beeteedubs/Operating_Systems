@@ -8,7 +8,7 @@
 
 // INITAILIZE ALL YOUR VARIABLES HERE
 rpthread_t tid = 0; //GLOBAL for thread IDs
-ucontext_t schedule_context; //GLOBAL for scheduler context to be initialized when first thread is created...
+ucontext_t schedule_context = (ucontext_t*)malloc(sizeof(ucontext_t)); //GLOBAL for scheduler context to be initialized when first thread is created...
 int check_sch_ctx = 0; //GLOBAL to check if schedule_context has no context (I found out we can't initialize to NULL) -> if 0 then empty
 Queue* runQueue = NULL; //GLOBAL for the runQueue that scheduler will grab contexts from
 struct itimerval start; //GLOBAL for timer start value for scheduling
@@ -147,37 +147,36 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 		if(getcontext(&schedule_context) < 0){
 			perror("getcontext");
 			exit(1);
-		}//error check to see if existing context?
-		void* sch_stack = malloc(STACK_SIZE);//allocate stack space
+		}
+
+		void* sch_stack = malloc(STACK_SIZE);
 		if(stack == NULL){
 			perror("Failed to allocate stack");
 			exit(1);
-		}//error check to see if stack was made
-		//setup the context...as done in makecontext.c example
+		}
+
 		schedule_context.uc_link = NULL;
 		schedule_context.uc_stack.ss_sp = sch_stack;
 		schedule_context.uc_stack.ss_size = STACK_SIZE;
 		schedule_context.uc_stack.ss_flags = 0;
 		
-		makeSchContext(); //made the next commented out line into a method after schedule() since schedule() is static?
-		//makecontext(&schedule_context, (void*) schedule, 0); //makecontext here, but idk whether the function reference is right? If doesn't work try adding an &?
+		makeSchContext();
 		printf("Scheduler context [hopefully] properly made...\n");
 		
 		//now to address the main context...putting it in TCB and queuing it to be swap into in the future
 		printf("Now making a main context!\n");
 		tcb* main_thread_control_block = (tcb*) malloc(sizeof(tcb));
-		printf("Main thread TCB malloced...\n");
 		main_thread_control_block->rpthread_id = tid;
 		tid += 1;
 		main_thread_control_block->thread_status = READY;
-		//now to make the main context...I think context already exists so we can use getcontext
+		
 		getcontext(&main_thread_control_block->context);
 		enQueue(runQueue, main_thread_control_block);
 		printf("Main context made and queued! Swapping context now to scheduler...\n");
 		//lastly swap from the main context to the schedule context to start some scheduler work!! Yerrrrrr
 		swapcontext(&main_thread_control_block->context, &schedule_context);
 	}
-
+	printf("FINISHED PTHREAD_CREATE\n\n\n");
     return 0;
 };
 
@@ -254,6 +253,23 @@ int rpthread_mutex_init(rpthread_mutex_t *mutex,
 	//initialize data structures for this mutex
 
 	// YOUR CODE HERE
+
+	// check mutex
+	if(mutex==NULL){
+		return -1;
+	}
+
+	// malloc space
+	mutex = (rpthread_mutex_t*)malloc(sizeof(rpthread_mutext_t));
+
+	// keep track of tcb's of threads waiting next in line
+	mutex->curr_thread = NULL;
+	mutex->front = (tcb*)malloc(sizeof(tcb));
+	mutex->rear = (tcb*)malloc(sizeof(tcb));
+
+	// keep track if locked or not
+	mutext->isLocked = 0;
+
 	return 0;
 };
 
@@ -265,6 +281,9 @@ int rpthread_mutex_lock(rpthread_mutex_t *mutex) {
         // context switch to the scheduler thread
 
         // YOUR CODE HERE
+		while(__sync_lock_test_and_set(&(mutex->isLocked),1)==1){
+			// add curr thread into mutex's queue
+			mutex_enQueue(
         return 0;
 };
 
@@ -332,7 +351,7 @@ static void schedule() {
 
 		//ok this is the juicy part for the RR
 		setitimer(ITIMER_PROF, &stop, NULL); //set timer and call schedule_handler @ time = stop!
-		printf("Swapping context to newly dequeued thread...\n");
+		printf("Swapping context to newly dequeued thread...FINISHED SCHEDULER\n\n\n");
 		currentThreadTCB->thread_status = SCHEDULED;
 		swapcontext(&schedule_context, &currentThreadTCB->context); //now with the timer started, switch to the current thread to give it some runtime!!
 		//when timer hit time = stop, then it calls the schedule handler where I will do the next steps...

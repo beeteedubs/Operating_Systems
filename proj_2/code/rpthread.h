@@ -63,6 +63,11 @@ typedef struct rpthread_mutex_t {
 	/* add something here */
 
 	// YOUR CODE HERE
+	tcb* owner;
+	tcb* front;
+	tcb* rear;
+
+	volatile int isLocked;
 } rpthread_mutex_t;
 
 /* define your data structures here: */
