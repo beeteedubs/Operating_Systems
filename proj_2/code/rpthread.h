@@ -1,4 +1,4 @@
-// File:	rpthread_t.h
+/// File:	rpthread_t.h
 
 // List all group member's name: Ritvik Biswas, Bryan Zhu
 // username of iLab:

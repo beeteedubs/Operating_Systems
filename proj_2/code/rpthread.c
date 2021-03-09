@@ -262,7 +262,6 @@ int rpthread_join(rpthread_t thread, void **value_ptr) {
 	printf("ENDING PTHREAD_JOIN\n");
 	return 0;
 };
-
 /* initialize the mutex lock */
 int rpthread_mutex_init(rpthread_mutex_t *mutex, 
                           const pthread_mutexattr_t *mutexattr) {
@@ -276,7 +275,7 @@ int rpthread_mutex_init(rpthread_mutex_t *mutex,
 	}
 
 	// DO WE EVEN NEED THIS?
-	//mutex = (rpthread_mutex_t*)malloc(sizeof(rpthread_mutex_t));
+	*mutex = *((rpthread_mutex_t*) malloc(sizeof( rpthread_mutex_t )));
 
 	// keep track of tcb's of threads waiting next in line
 	mutex->curr_thread = NULL;

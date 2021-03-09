@@ -3,7 +3,7 @@
 #include <stdlib.h> 
 #include <string.h> 
 #include <unistd.h> 
-#include "../rpthread.h"
+//#include "../rpthread.h"
 
 #define NUM_THREAD_IDS 5
 int counter; 
@@ -17,7 +17,7 @@ void* trythis(void* arg)
 	counter += 1; 
 	printf("\n\n Job %d has started\n\n", counter); 
 
-	for(i = 0; i < (0x00FFFFFF);i++);
+	for(i = 0; i < (0x00FFFFFF);i++);//fake work (more than 5ms)
 	printf("\n\n Job %d has finished\n\n", counter);
 	pthread_mutex_unlock(&lock);
 	pthread_exit(0); 
