@@ -3,11 +3,11 @@
 #include <stdlib.h> 
 #include <string.h> 
 #include <unistd.h> 
-//#include "../rpthread.h"
-
-#define NUM_THREAD_IDS 5
+#include "../rpthread.h"
+#define DEFAULT_THREAD_NUM 3
+int thread_num;
 int counter; 
-pthread_t tids[NUM_THREAD_IDS]; 
+
 pthread_mutex_t lock;
 void* trythis(void* arg) 
 {
@@ -23,14 +23,24 @@ void* trythis(void* arg)
 	pthread_exit(0); 
 } 
 
-int main(void) 
-{ 
+int main(int argc, char**argv) 
+{
+pthread_t tids[thread_num]; 
+	if (argc == 1) {
+		thread_num = DEFAULT_THREAD_NUM;
+	} else {
+		if (argv[1] < 1) {
+			printf("enter a valid thread number\n");
+			return 0;
+		} else
+			thread_num = atoi(argv[1]);
+	}	
 	int i = 0; 
 	pthread_mutex_init(&lock,NULL);
-	for(i=0;i<NUM_THREAD_IDS;i++){
+	for(i=0;i<thread_num;i++){
 		pthread_create(&tids[i], NULL, &trythis, NULL);
 	}
-	for(i=0;i<NUM_THREAD_IDS;i++){
+	for(i=0;i<thread_num;i++){
 		pthread_join(tids[i], NULL);
 	}
 
