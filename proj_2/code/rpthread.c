@@ -276,12 +276,11 @@ int rpthread_mutex_init(rpthread_mutex_t *mutex,
 	}
 
 	// DO WE EVEN NEED THIS?
-	mutex = (rpthread_mutex_t*)malloc(sizeof(rpthread_mutex_t));
+	//mutex = (rpthread_mutex_t*)malloc(sizeof(rpthread_mutex_t));
 
 	// keep track of tcb's of threads waiting next in line
 	mutex->curr_thread = NULL;
-	mutex->wait_queue = (Queue*)malloc(sizeof(Queue));
-
+	mutex->wait_queue = createQueue();
 	// keep track if locked or not
 	mutex->isLocked = 0;
 
@@ -299,6 +298,7 @@ int rpthread_mutex_lock(rpthread_mutex_t *mutex) {
 
 		// loop stops other threads by switching to scheduler
 		// loop doesn't run for first thread
+		printf("STARTING LOCK\n\n");
 		while(__sync_lock_test_and_set(&(mutex->isLocked),1)==1){
 			// add curr thread into mutex's queue
 			enQueue(mutex->wait_queue, currentThreadTCB);
@@ -332,7 +332,7 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex) {
 		// add wait_queue to runqueue
 
 		// first check if there is a wait queue
-		if (mutex->wait_queue != NULL){
+		if (mutex->wait_queue != NULL && mutex->wait_queue->front!=NULL){
 			// while wait_queue's front has a next
 			while(mutex->wait_queue->front->next != NULL){
 				qNode *tempNode = deQueue(mutex->wait_queue);
