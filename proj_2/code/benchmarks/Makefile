@@ -16,7 +16,9 @@ test:
 	$(CC) $(CFLAGS) -pthread -o test test.c -L../ -lrpthread -g
 
 test2:
-	$(CC) $(CFLAGS) -pthread -o test2 test2.c -L../ -lrpthread -g
+	$(CC) $(CFLAGS) -pthread -o test2 test2.c -L../ -lrpthread -g:
+test3:
+	$(CC) $(CFLAGS) -pthread -o test3 test3.c -L../ -lrpthread -g
 
 clean:
-	rm -rf testcase test test2  parallel_cal vector_multiply external_cal *.o ./record/
+	rm -rf testcase test test2 test3 parallel_cal vector_multiply external_cal *.o ./record/

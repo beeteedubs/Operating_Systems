@@ -3,7 +3,7 @@
 #include <stdlib.h> 
 #include <string.h> 
 #include <unistd.h> 
-#include "../rpthread.h" // comment out to test regular pthreads
+//#include "../rpthread.h" // comment out to test regular pthreads
 
 pthread_t tid1, tid2; 
 int counter; 
@@ -26,10 +26,10 @@ int main(void)
 	int error; 
 
 	pthread_create(&tid1, NULL, &trythis, NULL); 
-	pthread_create(&tid2, NULL, &trythis, NULL); 
+	pthread_create(&tid1, NULL, &trythis, NULL); 
 
 	pthread_join(tid1, NULL); 
-	pthread_join(tid2, NULL); 
+	//pthread_join(tid2, NULL); 
 
 	return 0; 
 } 
