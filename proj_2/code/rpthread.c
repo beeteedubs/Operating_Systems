@@ -22,6 +22,23 @@ tcb *currentThreadTCB = NULL; //we dont need this anymore...i think..sike we do
 
 ///////////////////////////////////
 //Linked List Helper Methods
+void printQueue(Queue* q){
+	printf("printing queue:\n");
+	if(q == NULL){
+		return;
+	}
+	qNode* temp = q->front;
+	if(temp == NULL){
+		printf("Queue is NULL...\n");
+		return;
+	}
+	do{
+		printf("TID: %u\t",temp->data->rpthread_id);	
+		temp = temp->next;
+	}while(temp != q->front || temp != NULL);
+	printf("\n");
+	return;
+}
 qNode* newNode(tcb* data){
 	qNode* temp = (qNode*)malloc(sizeof(qNode)); 
     	temp->data = data; 
@@ -297,9 +314,10 @@ int rpthread_mutex_lock(rpthread_mutex_t *mutex) {
 
 		// loop stops other threads by switching to scheduler
 		// loop doesn't run for first thread
-		printf("STARTING LOCK\n\n");
+		
 		while(__sync_lock_test_and_set(&(mutex->isLocked),1)==1){
 			// add curr thread into mutex's queue
+			printf("TID: %u owns this lock, not TID: %u\n",(mutex->curr_thread->rpthread_id), (currentThreadTCB->rpthread_id));
 			enQueue(mutex->wait_queue, currentThreadTCB);
 
 			// change status to blocked
@@ -308,7 +326,7 @@ int rpthread_mutex_lock(rpthread_mutex_t *mutex) {
 			// switch to scheduler
 			swapcontext(&(currentThreadTCB->context),&(schedule_context));
 		}
-
+		printf("STARTING LOCK\n\n");
 		// first thread that calls lock only runs this line
 		mutex->curr_thread = currentThreadTCB;
         return 0;
@@ -332,8 +350,8 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex) {
 
 		// first check if there is a wait queue
 		if (mutex->wait_queue != NULL && mutex->wait_queue->front!=NULL){
-			// while wait_queue's front has a next
-			while(mutex->wait_queue->front->next != NULL){
+			//wait_queue's front has a next
+			while(isQueueEmpty(mutex->wait_queue)==0){
 				qNode *tempNode = deQueue(mutex->wait_queue);
 				tempNode->data->thread_status = READY;
 				enQueue(runQueue,tempNode->data);
@@ -393,6 +411,7 @@ static void schedule() {
 	//run while queue has threads to run!
 	while(isQueueEmpty(runQueue) == 0){//FIX LATER
 		// schedule policy
+		printQueue(runQueue);
 		#ifndef MLFQ
 			// Choose RR
      			// CODE 1
@@ -416,9 +435,6 @@ static void schedule() {
 			printf("step: enqueue to runqueue if not done\n");
 			currentThreadTCB->thread_status = READY;
 			enQueue(runQueue, currentThreadTCB);
-		}else if(currentThreadTCB->thread_status == BLOCKED){	
-			printf("step: enqueue to blockQueue if blocked\n");
-			enQueue(blockQueue,currentThreadTCB);
 		}
 	}
 
@@ -443,6 +459,7 @@ static void sched_rr() {
 
 	//so jus realized we need a GLOBAL variable to keep track of the current thread that we dequeue...
 	//now dequeue a thread into it for the scheduler to swap context to...
+
 	currentThreadTCB = deQueue(runQueue)->data;
 	printf("Next TCB dequeued w/ TID:%u\n",currentThreadTCB->rpthread_id);
 }
