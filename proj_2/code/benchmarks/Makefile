@@ -16,7 +16,8 @@ test:
 	$(CC) $(CFLAGS) -pthread -o test test.c -L../ -lrpthread -g
 
 test2:
-	$(CC) $(CFLAGS) -pthread -o test2 test2.c -L../ -lrpthread -g:
+	$(CC) $(CFLAGS) -pthread -o test2 test2.c -L../ -lrpthread -g
+
 test3:
 	$(CC) $(CFLAGS) -pthread -o test3 test3.c -L../ -lrpthread -g
 

@@ -5,7 +5,7 @@
 #include <unistd.h> 
 #include "../rpthread.h"
 
-#define NUM_THREAD_IDS 3
+#define NUM_THREAD_IDS 5
 int counter; 
 pthread_t tids[NUM_THREAD_IDS]; 
 pthread_mutex_t lock;
