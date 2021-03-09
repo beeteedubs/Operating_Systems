@@ -5,7 +5,9 @@
 #include <unistd.h> 
 #include "../rpthread.h"
 
+#define NUM_THREAD_IDS 3
 int counter; 
+pthread_t tids[NUM_THREAD_IDS]; 
 pthread_mutex_t lock;
 void* trythis(void* arg) 
 {
@@ -24,14 +26,18 @@ void* trythis(void* arg)
 int main(void) 
 { 
 	int i = 0; 
- 	pthread_t tid,tid2; 
 	pthread_mutex_init(&lock,NULL);
+	for(i=0;i<NUM_THREAD_IDS;i++){
+		pthread_create(&tids[i], NULL, &trythis, NULL);
+	}
+	for(i=0;i<NUM_THREAD_IDS;i++){
+		pthread_join(tids[i], NULL);
+	}
 
-	pthread_create(&(tid), NULL, &trythis, NULL);
-	pthread_create(&(tid2),NULL,&trythis,NULL);
+//	pthread_create(&(tid2),NULL,&trythis,NULL);
 
-	pthread_join(tid2,NULL);
-	pthread_join(tid,NULL);
+//	pthread_join(tid2,NULL);
+//	pthread_join(tid,NULL);
 
 	printf("when is thsi happening???\n");
 
