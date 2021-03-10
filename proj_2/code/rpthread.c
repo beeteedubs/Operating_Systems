@@ -23,19 +23,16 @@ tcb *currentThreadTCB = NULL; //we dont need this anymore...i think..sike we do
 ///////////////////////////////////
 //Linked List Helper Methods
 void printQueue(Queue* q){
-	printf("printing queue:\n");
-	if(q == NULL){
+	//printf("Queue:");
+	if(q == NULL || q->front == NULL){
+		//printf("EMPTY\n");
 		return;
 	}
 	qNode* temp = q->front;
-	if(temp == NULL){
-		printf("Queue is NULL...\n");
-		return;
+	while(temp != NULL){
+	//	printf("TID: %u",temp->data->rpthread_id);
+		temp=temp->next;
 	}
-	do{
-		printf("TID: %u\t",temp->data->rpthread_id);	
-		temp = temp->next;
-	}while(temp != q->front || temp != NULL);
 	printf("\n");
 	return;
 }
@@ -80,21 +77,21 @@ int isQueueEmpty(Queue* q){
 }
 
 qNode* isThread(rpthread_t t, Queue* q){
-	printf("in isThread...\n");
+	//printf("in isThread...\n");
 	qNode* temp = q->front;
 	if(temp == NULL){
-		printf("Queue is NULL...\n");
+	//	printf("Queue is NULL...\n");
 		return NULL;
 	}
 	do{
 		if(temp->data->rpthread_id == t){//then we found the TCB for that thread
-			printf("Found thread...\n");
+		//	printf("Found thread...\n");
 			return temp;
 		}else{//else go to next node
 			temp = temp->next;
 		}
-	}while(temp != q->front || temp != NULL);
-	printf("Not found...\n");
+	}while(temp != q->front &&  temp != NULL);
+	//printf("Not found...\n");
 	return NULL; //thread not found 
 }
 
@@ -110,11 +107,11 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
        // after everything is all set, push this thread int
        // YOUR CODE HERE
 	
-	printf("STARTING PTHREAD_CREATE\n\n\n");
+	//printf("STARTING PTHREAD_CREATE\n\n\n");
 
 
 	// MAKE CONTEXT---------------------------------------------------------------------------------------------------------------
-	printf("step: make context\n");
+//	printf("step: make context\n");
 	//first initialize the TCB - (change) need to malloc space for this tcb struct
 	tcb* thread_control_block = (tcb*) malloc(sizeof(tcb));
 
@@ -122,15 +119,15 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	*thread = tid;
 	tid = tid+ 1; // increment GLOBAL thread ID so no 2 threads have same thread ID
 	thread_control_block->rpthread_id = *thread;//set thread id in TCB
-	printf("This new thread's ID is: %u\n", thread_control_block->rpthread_id);//DEBUG line idk if this works yet...
+//	printf("This new thread's ID is: %u\n", thread_control_block->rpthread_id);//DEBUG line idk if this works yet...
 	thread_control_block->thread_status = READY;//set status in TCB
-	printf("about to make context\n");
+//	printf("about to make context\n");
 	if (getcontext(&thread_control_block->context) < 0){//init context, need this or will segfault
 		perror("getcontext");
 		exit(1);
 	}
 	//allocate space for the stack
-	printf("about to malloc\n");
+//	printf("about to malloc\n");
 	void *stack = malloc(STACK_SIZE); //remember to FREE later
 	if(stack == NULL){
 		perror("Failed to allocate stack");
@@ -149,9 +146,9 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	
 
 	// ENQUEUE---------------------------------------------------------------------------------------------------------------
-	printf("step: enqueue\n");
+//	printf("step: enqueue\n");
 	if(runQueue == NULL){
-		printf("Made a runqueue...\n");
+//		printf("Made a runqueue...\n");
 		runQueue = createQueue();
 	}
 	enQueue(runQueue,thread_control_block);
@@ -164,9 +161,9 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	 * create a context for main and put it in the runQueue itself...but that means make a tcb itself for the main?
 	 */
 	if(check_sch_ctx == 0){//then create the context, else it already exists and DO NOTHING
-		printf("step (once): scheduler\n");
+//		printf("step (once): scheduler\n");
 
-		printf("Scheduler Context not found...now making one!\n");
+//		printf("Scheduler Context not found...now making one!\n");
 		check_sch_ctx += 1; //1 means schedule context exists
 		start.it_value.tv_sec = 0;
 		start.it_value.tv_usec = 0;	
@@ -188,10 +185,10 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 		schedule_context.uc_stack.ss_flags = 0;
 		
 		makeSchContext();
-		printf("Scheduler context [hopefully] properly made...\n");
+//		printf("Scheduler context [hopefully] properly made...\n");
 		
 		//now to address the main context...putting it in TCB and queuing it to be swap into in the future
-		printf("Now making a main context!\n");
+//		printf("Now making a main context!\n");
 		tcb* main_thread_control_block = (tcb*) malloc(sizeof(tcb));
 		main_thread_control_block->rpthread_id = tid;
 		tid += 1;
@@ -199,12 +196,12 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 		
 		getcontext(&main_thread_control_block->context);
 		enQueue(runQueue, main_thread_control_block);
-		printf("Main context made and queued! Swapping context now to scheduler...\n");
+//		printf("Main context made and queued! Swapping context now to scheduler...\n");
 		//lastly swap from the main context to the schedule context to start some scheduler work!! Yerrrrrr
 		swapcontext(&main_thread_control_block->context, &schedule_context);
 		
 	}
-	printf("FINISHED PTHREAD_CREATE\n\n\n");
+//	printf("FINISHED PTHREAD_CREATE\n\n\n");
     return 0;
 };
 
@@ -224,7 +221,7 @@ int rpthread_yield() {
 	 *
 	 * I think that the swap should be done in the scheduler and that I should simply just switch to that context
 	 */
-	printf("rpthread yield called...let go of CPU...move back to scheduler for next job!\n");
+//	printf("rpthread yield called...let go of CPU...move back to scheduler for next job!\n");
 	setitimer(ITIMER_PROF, &start, NULL);
 	currentThreadTCB->thread_status = READY;
 	//send back to scheduler context
@@ -247,13 +244,13 @@ void rpthread_exit(void *value_ptr) {
 	 *
 	 * The actual switching context, should be done by the scheduler itself - need to figure that out
 	 */
-	printf("STARTING PTHREAD_EXIT\n\n\n");
-	printf("step: change status to DONE\n");
+//	printf("STARTING PTHREAD_EXIT\n\n\n");
+//	printf("step: change status to DONE\n");
 	currentThreadTCB->thread_status = DONE;
 	
 	// restart timer
 	setitimer(ITIMER_PROF, &start, NULL);
-	printf("FINISH PTHREAD_EXIT: switch back to scheduler\n\n\n");
+//	printf("FINISH PTHREAD_EXIT: switch back to scheduler\n\n\n");
 	setcontext(&schedule_context);
 };
 
@@ -266,17 +263,17 @@ int rpthread_join(rpthread_t thread, void **value_ptr) {
   
 	// YOUR CODE HERE
 	//first find given thread
-	printf("STARTING PTHREAD_JOIN\n");
-	printf("rpthread join called..find thread..wait until it is DONE...continue\n");
+//	printf("STARTING PTHREAD_JOIN\n");
+//	printf("rpthread join called..find thread..wait until it is DONE...continue\n");
 	qNode* found_thread = isThread(thread, runQueue);
 	if(found_thread == NULL){
-		printf("Thread not found!!\n");
+//		printf("Thread not found!!\n");
 		return 1;
 	}
 	while(found_thread->data->thread_status != DONE){
 	}//loop until found_thread is donei
 
-	printf("ENDING PTHREAD_JOIN\n");
+//	printf("ENDING PTHREAD_JOIN\n");
 	return 0;
 };
 /* initialize the mutex lock */
@@ -317,7 +314,7 @@ int rpthread_mutex_lock(rpthread_mutex_t *mutex) {
 		
 		while(__sync_lock_test_and_set(&(mutex->isLocked),1)==1){
 			// add curr thread into mutex's queue
-			printf("TID: %u owns this lock, not TID: %u\n",(mutex->curr_thread->rpthread_id), (currentThreadTCB->rpthread_id));
+//			printf("TID: %u owns this lock, not TID: %u\n",(mutex->curr_thread->rpthread_id), (currentThreadTCB->rpthread_id));
 			enQueue(mutex->wait_queue, currentThreadTCB);
 
 			// change status to blocked
@@ -326,7 +323,7 @@ int rpthread_mutex_lock(rpthread_mutex_t *mutex) {
 			// switch to scheduler
 			swapcontext(&(currentThreadTCB->context),&(schedule_context));
 		}
-		printf("STARTING LOCK\n\n");
+//		printf("STARTING LOCK\n\n");
 		// first thread that calls lock only runs this line
 		mutex->curr_thread = currentThreadTCB;
         return 0;
@@ -340,7 +337,7 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex) {
 	// so that they could compete for mutex later.
 
 	// YOUR CODE HERE
-	printf("STARTING UNLOCK\n\n");
+//	printf("STARTING UNLOCK\n\n");
 	// if not current thread not mutex's curr_thread, return -1
 	if(mutex->curr_thread != currentThreadTCB){
 		return -1;
@@ -378,7 +375,7 @@ int rpthread_mutex_destroy(rpthread_mutex_t *mutex) {
 
 /*the handler function we will switch to when timer switches*/
 void schedule_handler(int signum){
-	printf("Thread ran out of time. SWITCH!\n");
+//	printf("Thread ran out of time. SWITCH!\n");
 	swapcontext(&currentThreadTCB->context, &schedule_context); //switch back to scheduler now that the timer has run its timeslice
 }//referencing timer.c example code given in the CS416 FAQ Link: https://www.cs.rutgers.edu/~sk2113/course/cs416-sp21/timer.c
 
@@ -399,8 +396,8 @@ static void schedule() {
 	// YOUR CODE HERE
 	/*Let's start by setting the timer to when the schedule_handler is called (I think that's where I'll have the context swap to the next one on the queue?)*/
 	//following is referenced from the timer.c code in https://www.cs.rutgers.edu/~sk2113/course/cs416-sp21/timer.c
-	printf("STARTING SCHEDULER\n\n\n");
-	printf("step (once): setting up timer...\n");
+//	printf("STARTING SCHEDULER\n\n\n");
+//	printf("step (once): setting up timer...\n");
 	struct sigaction sa;
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = &schedule_handler;
@@ -411,7 +408,7 @@ static void schedule() {
 	//run while queue has threads to run!
 	while(isQueueEmpty(runQueue) == 0){//FIX LATER
 		// schedule policy
-		printQueue(runQueue);
+		//printQueue(runQueue);
 		#ifndef MLFQ
 			// Choose RR
      			// CODE 1
@@ -424,15 +421,18 @@ static void schedule() {
 
 		//ok this is the juicy part for the RR
 		setitimer(ITIMER_PROF, &stop, NULL); //set timer and call schedule_handler @ time = stop!
-		printf("Swapping context to newly dequeued thread...FINISHED SCHEDULER\n\n\n");
+//		printf("Swapping context to newly dequeued thread...FINISHED SCHEDULER\n\n\n");
 		currentThreadTCB->thread_status = SCHEDULED;
-		printf("step: switch back to current thread\n");
+//		printf("step: switch back to current thread\n");
 		swapcontext(&schedule_context, &currentThreadTCB->context); //now with the timer started, switch to the current thread to give it some runtime!!
 		//when timer hit time = stop, then it calls the schedule handler where I will do the next steps...
 		//ok so signal handler (or YIELD) sent us back here...next steps ifs to put back the thread into the runqueue, if not DONE
-		printf("BACK IN SCHEDULER\n");
-		if(currentThreadTCB->thread_status != DONE){
-			printf("step: enqueue to runqueue if not done\n");
+//		printf("BACK IN SCHEDULER\n");
+		if(currentThreadTCB->thread_status == BLOCKED){
+//			printf("step: NO ENQUEUE, leave in wait_queue\n");
+		}
+		else if(currentThreadTCB->thread_status != DONE){
+//			printf("step: enqueue to runqueue if not done\n");
 			currentThreadTCB->thread_status = READY;
 			enQueue(runQueue, currentThreadTCB);
 		}
@@ -459,9 +459,9 @@ static void sched_rr() {
 
 	//so jus realized we need a GLOBAL variable to keep track of the current thread that we dequeue...
 	//now dequeue a thread into it for the scheduler to swap context to...
-
+	//printQueue(runQueue);
 	currentThreadTCB = deQueue(runQueue)->data;
-	printf("Next TCB dequeued w/ TID:%u\n",currentThreadTCB->rpthread_id);
+//	printf("Next TCB dequeued w/ TID:%u\n",currentThreadTCB->rpthread_id);
 }
 
 /* Preemptive MLFQ scheduling algorithm */

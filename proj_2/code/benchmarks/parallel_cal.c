@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
-#include "../rpthread.h"
+//#include "../rpthread.h"
 
 #define DEFAULT_THREAD_NUM 4
 #define C_SIZE 1000	//100000
