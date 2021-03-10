@@ -85,6 +85,7 @@ void enQueue(Queue* q, tcb* data);
 qNode* deQueue(Queue* q);
 int isQueueEmpty(Queue* q);
 qNode* isThread(rpthread_t t, Queue* q);
+void priorityBoost();
 ///////////////////////////////////
 /* Function Declarations: */
 /* mutex struct definition */
@@ -127,6 +128,9 @@ int rpthread_mutex_destroy(rpthread_mutex_t *mutex);
 
 /*RR Scheduler*/
 static void sched_rr();
+
+/*MLFQ Schedule*/
+static void sched_mlfq();
 
 /*make context helper for rpthread_create*/
 void makeSchContext();

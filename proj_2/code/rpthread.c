@@ -17,10 +17,10 @@ Queue* blockQueue = NULL; //MAYBE NOT NEEDED
 
 int mlfqCounter = 0;
 
-struct itimerval start; //GLOBAL for timer start value for scheduling
-struct itimerval stop;  //GLOABL for timer stop value for scheduling
-//initialize current thread TCB
-tcb *currentThreadTCB = NULL; //we dont need this anymore...i think..sike we do
+struct itimerval start;
+struct itimerval stop;  
+//declare current thread TCB
+tcb *currentThreadTCB = NULL; 
 
 // YOUR CODE HERE
 
@@ -151,12 +151,20 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 
 	// ENQUEUE---------------------------------------------------------------------------------------------------------------
 //	printf("step: enqueue\n");
-	if(runQueue == NULL){
-//		printf("Made a runqueue...\n");
-		runQueue = createQueue();
-	}
-	enQueue(runQueue,thread_control_block);
-
+	#ifndef MLFQ
+		if(runQueue == NULL){
+//			printf("Made a runqueue...\n");
+			runQueue = createQueue();
+		}
+		enQueue(runQueue,thread_control_block);
+	#else
+		// first time, create all queues
+		if(mlfq[0] == NULL){
+			for(int i = 0; i < 4;i++){
+				mlfq[i] = createQueue();
+			}
+		}
+	#endif
 	// SCHEDULER--------------------------------------------------------------------------------------------------------------
 	/**************
 
@@ -199,7 +207,11 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 		main_thread_control_block->thread_status = READY;
 		
 		getcontext(&main_thread_control_block->context);
-		enQueue(runQueue, main_thread_control_block);
+		#ifndef MLFQ
+			enQueue(runQueue, main_thread_control_block);
+		#else
+			enQueue(mlfq[0], main_thread_control_block);
+		#endif
 //		printf("Main context made and queued! Swapping context now to scheduler...\n");
 		//lastly swap from the main context to the schedule context to start some scheduler work!! Yerrrrrr
 		swapcontext(&main_thread_control_block->context, &schedule_context);
@@ -269,7 +281,17 @@ int rpthread_join(rpthread_t thread, void **value_ptr) {
 	//first find given thread
 //	printf("STARTING PTHREAD_JOIN\n");
 //	printf("rpthread join called..find thread..wait until it is DONE...continue\n");
-	qNode* found_thread = isThread(thread, runQueue);
+	qNode* found_thread;
+	#ifndef MLFQ
+		found_thread = isThread(thread, runQueue);
+	#else
+		for(int i = 0;i<4;i++){
+			found_thread = isThread(thread,mlfq[i]);
+			if(found_thread != NULL){
+				break;
+			}
+		}
+	#endif
 	if(found_thread == NULL){
 //		printf("Thread not found!!\n");
 		return 1;
@@ -342,7 +364,8 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex) {
 
 	// YOUR CODE HERE
 //	printf("STARTING UNLOCK\n\n");
-	// if not current thread not mutex's curr_thread, return -1
+
+	// if  current thread not mutex's curr_thread, return -1
 	if(mutex->curr_thread != currentThreadTCB){
 		return -1;
 	}else{// is mutex's curr_thread and already locked
@@ -352,11 +375,21 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex) {
 		// first check if there is a wait queue
 		if (mutex->wait_queue != NULL && mutex->wait_queue->front!=NULL){
 			//wait_queue's front has a next
+			#ifndef MLFQ
 			while(isQueueEmpty(mutex->wait_queue)==0){
 				qNode *tempNode = deQueue(mutex->wait_queue);
 				tempNode->data->thread_status = READY;
 				enQueue(runQueue,tempNode->data);
 			}
+			#else
+			while(isQueueEmpty(mutex->wait_queue)==0){
+				qNode *tempNode = deQueue(mutex->wait_queue);
+				tempNode->data->thread_status = READY;
+				// 
+				enQueue(mlfq[0],tempNode->data);
+			}
+			#endif
+			
 
 		}
 	}
@@ -379,20 +412,21 @@ int rpthread_mutex_destroy(rpthread_mutex_t *mutex) {
 
 /*the handler function we will switch to when timer switches*/
 void schedule_handler(int signum){
-	printf("Timer interrupt and increment priority if possible and if mlfq!\n");	
+//	printf("Timer interrupt and increment priority if possible and if mlfq!\n");	
 	#ifndef MLFQ
 
 	#else
 		// increment priority if not lowest
 		if(currentThreadTCB->priority<3){
-			currentThreadTCB->priority = currentThreadTCB->priority+1; 
+			currentThreadTCB->priority += 1; 
 		}
 
 		// increment mlfqCounter, keep track until priority boost
 		mlfqCounter += 1;
 
-		// priority boost!
-		if(mlfqCounter > 9){
+		// 10 time slices have passed!
+		if(mlfqCounter > 10){
+			// boost all queues
 			priorityBoost();
 			// reset counter
 			mlfqCounter = 0;
@@ -401,8 +435,22 @@ void schedule_handler(int signum){
 	swapcontext(&currentThreadTCB->context, &schedule_context); //switch back to scheduler now that the timer has run its timeslice
 }//referencing timer.c example code given in the CS416 FAQ Link: https://www.cs.rutgers.edu/~sk2113/course/cs416-sp21/timer.c
 
-// move all jobs to mlfq[0] 
+// move all jobs (including mutex) to mlfq[0] 
 void priorityBoost(){
+	// change priority level for current thread
+	if (currentThreadTCB->priority != 0){
+		currentThreadTCB->priority = 0;
+	}
+	// move lower 3 queue into 1st queue
+	for(int i = 1; i < 4; i++){//runs 3x
+		// first check if lower queue is empty
+		while(isQueueEmpty(mlfq[i]) == 0){// 0 -> not empty
+			// change status of nodes
+			mlfq[i]->front->data->priority = 0;
+			// enQueue output of deQueue
+			enQueue(mlfq[0],mlfq[i]->front->data);
+		}
+	}
 	
 	
 	return;
@@ -435,17 +483,22 @@ static void schedule() {
 	stop.it_value.tv_sec = 0; //0 seconds!
 	stop.it_value.tv_usec = TIMESLICE*1000; //TIMESLICE (ms) = TIMESLICE * 1000 (us), right? so timer should run for TIMESLICE ms here...
 	//run while queue has threads to run!
+	#ifndef MLFQ
 	while(isQueueEmpty(runQueue) == 0){//FIX LATER
-		// schedule policy
+	#else
+	while(isQueueEmpty(mlfq[0]) == 0 || isQueueEmpty(mlfq[1]) == 0 || isQueueEmpty(mlfq[2]) == 0 || isQueueEmpty(mlfq[3]) == 0){
+	#endif
+		// choose schedule policy
 		//printQueue(runQueue);
 		#ifndef MLFQ
 			// Choose RR
-     			// CODE 1
-     			sched_rr();
+     		sched_rr();
+
 		#else 
 			// Choose MLFQ
-     			// CODE 2
-     			sched_mlfq();
+     		sched_mlfq();
+			
+			// enqueue into appropriate
 		#endif
 
 		//ok this is the juicy part for the RR
@@ -453,18 +506,34 @@ static void schedule() {
 //		printf("Swapping context to newly dequeued thread...FINISHED SCHEDULER\n\n\n");
 		currentThreadTCB->thread_status = SCHEDULED;
 //		printf("step: switch back to current thread\n");
-		swapcontext(&schedule_context, &currentThreadTCB->context); //now with the timer started, switch to the current thread to give it some runtime!!
-		//when timer hit time = stop, then it calls the schedule handler where I will do the next steps...
-		//ok so signal handler (or YIELD) sent us back here...next steps ifs to put back the thread into the runqueue, if not DONE
-//		printf("BACK IN SCHEDULER\n");
+		swapcontext(&schedule_context, &currentThreadTCB->context); 
+
+		// don't enqueue if blocked
 		if(currentThreadTCB->thread_status == BLOCKED){
 //			printf("step: NO ENQUEUE, leave in wait_queue\n");
 		}
 		else if(currentThreadTCB->thread_status != DONE){
 //			printf("step: enqueue to runqueue if not done\n");
+			// going to re-enqueue, so change status to READY
 			currentThreadTCB->thread_status = READY;
-			enQueue(runQueue, currentThreadTCB);
+			#ifndef MLFQ
+				enQueue(runQueue, currentThreadTCB);
+			#else
+				// enqueue to queue based on priority 
+				if(currentThreadTCB->priority == 0){//enqueue to 1st queue
+					enQueue(mlfq[0], currentThreadTCB);
+				}else if(currentThreadTCB->priority == 1){//enqueue to 2nd queue
+					enQueue(mlfq[1], currentThreadTCB);
+				}else if(currentThreadTCB->priority == 2){//enqueue to 3rd queue
+					enQueue(mlfq[2], currentThreadTCB);
+				}else if(currentThreadTCB->priority == 3){//enqueue to 4th  queue
+					enQueue(mlfq[3], currentThreadTCB);
+				}else{
+					printf("something went wrong!\n");
+				}
+			#endif
 		}
+//		printf("BACK IN SCHEDULER\n");
 	}
 
 }
@@ -477,19 +546,11 @@ void makeSchContext(){
 /* Round Robin (RR) scheduling algorithm */
 static void sched_rr() {
 	// Your own implementation of RR
-	// (feel free to modify arguments and return types)
-
-	// YOUR CODE HERE
-	/****************
-	 * I'm going to start with a simple FCFS scheduler to test my threads...
-	 *
-	 *
-	 */
-
 	//so jus realized we need a GLOBAL variable to keep track of the current thread that we dequeue...
 	//now dequeue a thread into it for the scheduler to swap context to...
 	//printQueue(runQueue);
 	currentThreadTCB = deQueue(runQueue)->data;
+	return;
 //	printf("Next TCB dequeued w/ TID:%u\n",currentThreadTCB->rpthread_id);
 }
 
@@ -497,11 +558,17 @@ static void sched_rr() {
 static void sched_mlfq() {
 	// Your own implementation of MLFQ
 	// (feel free to modify arguments and return types)
-
+	for(int i = 0; i < 4; i++){
+		if(isQueueEmpty(mlfq[i])!=0){//if empty
+			continue;
+		}else{//not empty
+			currentThreadTCB = deQueue(mlfq[i])->data;
+			printf("job found on queue:%d\n",i);
+			return;
+		}
+	}
+	printf("no jobs left\n");
+	return;
 	// YOUR CODE HERE
 }
-
-// Feel free to add any other functions you need
-
-// YOUR CODE HERE
 
