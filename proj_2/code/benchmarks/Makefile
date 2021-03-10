@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -g -w
 
-all:: parallel_cal vector_multiply external_cal test
+all:: parallel_cal vector_multiply external_cal test test2 test3 incrementalTesting
 
 parallel_cal:
 	$(CC) $(CFLAGS) -pthread -o parallel_cal parallel_cal.c -L../ -lrpthread
@@ -21,5 +21,8 @@ test2:
 test3:
 	$(CC) $(CFLAGS) -pthread -o test3 test3.c -L../ -lrpthread -g
 
+incrementalTesting:
+	$(CC) $(CFLAGS) -pthread -o incrementalTesting incrementalTesting.c -L../ -lrpthread -g
+
 clean:
-	rm -rf testcase test test2 test3 parallel_cal vector_multiply external_cal *.o ./record/
+	rm -rf testcase test test2 test3 parallel_cal vector_multiply external_cal incrementalTesting *.o ./record/

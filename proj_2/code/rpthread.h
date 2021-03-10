@@ -85,6 +85,7 @@ void enQueue(Queue* q, tcb* data);
 qNode* deQueue(Queue* q);
 int isQueueEmpty(Queue* q);
 qNode* isThread(rpthread_t t, Queue* q);
+void printQueue(Queue* q);
 ///////////////////////////////////
 /* Function Declarations: */
 /* mutex struct definition */

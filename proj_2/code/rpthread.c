@@ -22,23 +22,6 @@ tcb *currentThreadTCB = NULL; //we dont need this anymore...i think..sike we do
 
 ///////////////////////////////////
 //Linked List Helper Methods
-void printQueue(Queue* q){
-	printf("printing queue:\n");
-	if(q == NULL){
-		return;
-	}
-	qNode* temp = q->front;
-	if(temp == NULL){
-		printf("Queue is NULL...\n");
-		return;
-	}
-	do{
-		printf("TID: %u\t",temp->data->rpthread_id);	
-		temp = temp->next;
-	}while(temp != q->front || temp != NULL);
-	printf("\n");
-	return;
-}
 qNode* newNode(tcb* data){
 	qNode* temp = (qNode*)malloc(sizeof(qNode)); 
     	temp->data = data; 
@@ -81,9 +64,12 @@ int isQueueEmpty(Queue* q){
 
 qNode* isThread(rpthread_t t, Queue* q){
 	printf("in isThread...\n");
+	//check if q is empty first
+	if(q == NULL)
+		return NULL;
 	qNode* temp = q->front;
 	if(temp == NULL){
-		printf("Queue is NULL...\n");
+		printf("Queue is empty...\n");
 		return NULL;
 	}
 	do{
@@ -93,9 +79,36 @@ qNode* isThread(rpthread_t t, Queue* q){
 		}else{//else go to next node
 			temp = temp->next;
 		}
-	}while(temp != q->front || temp != NULL);
+	}while(temp != q->rear || temp != NULL);
 	printf("Not found...\n");
 	return NULL; //thread not found 
+}
+
+void printQueue(Queue* q){
+	printf("\n");
+        printf("printing queue:\n");
+	if(q == NULL){ //queue DNE
+		printf("Queue DNE...\n");
+		return;
+	}	
+	qNode* temp = q->front;
+	if(temp == NULL){//queue is empty
+		printf("Queue is empty...\n");
+		return;
+	}
+	printf("\tTIDTemp: %u\n",temp->data->rpthread_id);
+	printf("\tTIDFront: %u\n",q->front->data->rpthread_id);
+	printf("\tTIDRear: %u\n",q->rear->data->rpthread_id); 
+	printf("\n");
+	
+	//otherwise queue has stuff..print
+	do{
+		printf("TID: %u\t",temp->data->rpthread_id);	
+		temp = temp->next;
+	}while(temp != NULL);
+	printf("\n");
+	return;
+	
 }
 
 ///////////////////////////////////
