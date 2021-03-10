@@ -33,10 +33,10 @@ void printQueue(Queue* q){
 		return;
 	}
 	qNode* temp = q->front;
-	while(temp != NULL){
-	//	printf("TID: %u",temp->data->rpthread_id);
+	do{
+		printf("TID: %u\t",temp->data->rpthread_id);
 		temp=temp->next;
-	}
+	}while(temp != NULL)
 	printf("\n");
 	return;
 }
@@ -82,6 +82,8 @@ int isQueueEmpty(Queue* q){
 
 qNode* isThread(rpthread_t t, Queue* q){
 	//printf("in isThread...\n");
+	if(q == NULL)
+		return NULL;
 	qNode* temp = q->front;
 	if(temp == NULL){
 	//	printf("Queue is NULL...\n");
@@ -94,7 +96,7 @@ qNode* isThread(rpthread_t t, Queue* q){
 		}else{//else go to next node
 			temp = temp->next;
 		}
-	}while(temp != q->front &&  temp != NULL);
+	}while(temp != NULL);
 	//printf("Not found...\n");
 	return NULL; //thread not found 
 }
