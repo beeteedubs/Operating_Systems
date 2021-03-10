@@ -1,8 +1,8 @@
-// File:	rpthread.c
+// File:rpthread.c
 
-// List all group member's name:
-// username of iLab:
-// iLab Server:
+// List all group member's name: Bryan Zhu, Ritvik Biswas
+// username of iLab: bjz20
+// iLab Server:iLab4
 
 #include "rpthread.h"
 
@@ -10,9 +10,13 @@
 rpthread_t tid = 0; // thread IDs, increment w/ each pthread create call
 ucontext_t schedule_context;//(ucontext_t*)malloc(sizeof(ucontext_t)); //scheduler context to init w/ first pthread create call
 
-int check_sch_ctx = 0; //GLOBAL to check if schedule_context has no context (I found out we can't initialize to NULL) -> if 0 then empty
+int check_sch_ctx = 0; //check if schedule_context has no context (I found out we can't initialize to NULL) -> if 0 then empty
 Queue* runQueue = NULL; //GLOBAL for the runQueue that scheduler will grab contexts from
-Queue* blockQueue = NULL; // queue of blocked contexts from mutex lock
+Queue* mlfq[4];
+Queue* blockQueue = NULL; //MAYBE NOT NEEDED
+
+int mlfqCounter = 0;
+
 struct itimerval start; //GLOBAL for timer start value for scheduling
 struct itimerval stop;  //GLOABL for timer stop value for scheduling
 //initialize current thread TCB
@@ -375,9 +379,34 @@ int rpthread_mutex_destroy(rpthread_mutex_t *mutex) {
 
 /*the handler function we will switch to when timer switches*/
 void schedule_handler(int signum){
-//	printf("Thread ran out of time. SWITCH!\n");
+	printf("Timer interrupt and increment priority if possible and if mlfq!\n");	
+	#ifndef MLFQ
+
+	#else
+		// increment priority if not lowest
+		if(currentThreadTCB->priority<3){
+			currentThreadTCB->priority = currentThreadTCB->priority+1; 
+		}
+
+		// increment mlfqCounter, keep track until priority boost
+		mlfqCounter += 1;
+
+		// priority boost!
+		if(mlfqCounter > 9){
+			priorityBoost();
+			// reset counter
+			mlfqCounter = 0;
+		}
+	#endif
 	swapcontext(&currentThreadTCB->context, &schedule_context); //switch back to scheduler now that the timer has run its timeslice
 }//referencing timer.c example code given in the CS416 FAQ Link: https://www.cs.rutgers.edu/~sk2113/course/cs416-sp21/timer.c
+
+// move all jobs to mlfq[0] 
+void priorityBoost(){
+	
+	
+	return;
+}
 
 /* scheduler */
 static void schedule() {

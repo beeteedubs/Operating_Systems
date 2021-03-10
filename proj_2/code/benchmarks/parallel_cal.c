@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
-//#include "../rpthread.h"
+#include "../rpthread.h"
 
 #define DEFAULT_THREAD_NUM 4
-#define C_SIZE 1000	//100000
-#define R_SIZE 100	//10000
+#define C_SIZE 100000
+#define R_SIZE 10000
 
 pthread_mutex_t   mutex;
 int thread_num;
