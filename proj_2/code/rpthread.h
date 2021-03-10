@@ -132,7 +132,9 @@ static void sched_rr();
 void makeSchContext();
 
 /*signal handler*/
-void schedule_handler(int signum); 
+void schedule_handler(int signum);
+
+void printQueue(Queue *q);
 
 
 #ifdef USE_RTHREAD

@@ -4,7 +4,7 @@
 #include <string.h> 
 #include <unistd.h> 
 #include "../rpthread.h"
-#define DEFAULT_THREAD_NUM 3
+#define DEFAULT_THREAD_NUM 1
 int thread_num;
 int counter; 
 
@@ -23,9 +23,8 @@ void* trythis(void* arg)
 	pthread_exit(0); 
 } 
 
-int main(int argc, char**argv) 
-{
-pthread_t tids[thread_num]; 
+int main(int argc, char**argv) {
+	pthread_t tids[thread_num]; 
 	if (argc == 1) {
 		thread_num = DEFAULT_THREAD_NUM;
 	} else {
@@ -40,17 +39,10 @@ pthread_t tids[thread_num];
 	for(i=0;i<thread_num;i++){
 		pthread_create(&tids[i], NULL, &trythis, NULL);
 	}
+	pthread_t rando = 5;
 	for(i=0;i<thread_num;i++){
-		pthread_join(tids[i], NULL);
+		pthread_join(rando, NULL);
 	}
 
-//	pthread_create(&(tid2),NULL,&trythis,NULL);
-
-//	pthread_join(tid2,NULL);
-//	pthread_join(tid,NULL);
-
-	printf("when is thsi happening???\n");
-
-	return 0; 
-} 
-
+	return 0;
+}
