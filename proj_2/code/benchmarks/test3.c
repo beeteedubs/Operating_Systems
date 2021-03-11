@@ -13,6 +13,7 @@ void* trythis(void* arg)
 {
 
 	pthread_mutex_lock(&lock);
+	
 	unsigned long i = 0;
 	counter += 1; 
 	printf("Job %d has started\n", counter); 
@@ -20,6 +21,7 @@ void* trythis(void* arg)
 	for(i = 0; i < (0x00FFFFFF);i++);//fake work (more than 5ms)
 	printf("Job %d has finished\n", counter);
 	pthread_mutex_unlock(&lock);
+
 	pthread_exit(0); 
 } 
 
@@ -44,6 +46,7 @@ pthread_t* tids = (pthread_t*)malloc(thread_num*sizeof(pthread_t));;
 		pthread_join(tids[i], NULL);
 	}
 	free(tids);
+	pthread_mutex_destroy(&lock);
 //	pthread_create(&(tid2),NULL,&trythis,NULL);
 
 //	pthread_join(tid2,NULL);
