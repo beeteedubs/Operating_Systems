@@ -1,8 +1,8 @@
 /// File:	rpthread_t.h
 
 // List all group member's name: Ritvik Biswas, Bryan Zhu
-// username of iLab:
-// iLab Server:
+// username of iLab: bjz20
+// iLab Server: ilab4
 
 #ifndef RTHREAD_T_H
 #define RTHREAD_T_H
