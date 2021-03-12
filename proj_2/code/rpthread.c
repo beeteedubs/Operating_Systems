@@ -36,7 +36,7 @@ void printQueue(Queue* q){
 	do{
 		printf("TID: %u\t",temp->data->rpthread_id);
 		temp=temp->next;
-	}while(temp != NULL)
+	}while(temp != NULL);
 	printf("\n");
 	return;
 }
@@ -166,6 +166,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 				mlfq[i] = createQueue();
 			}
 		}
+		enQueue(mlfq[0],thread_control_block);
 	#endif
 	// SCHEDULER--------------------------------------------------------------------------------------------------------------
 	/**************
@@ -315,9 +316,7 @@ int rpthread_mutex_init(rpthread_mutex_t *mutex,
 	if(mutex==NULL){
 		return -1;
 	}
-
-	// DO WE EVEN NEED THIS?
-	*mutex = *((rpthread_mutex_t*) malloc(sizeof( rpthread_mutex_t )));
+	mutex->curr_thread = (tcb*) malloc(sizeof(tcb));
 
 	// keep track of tcb's of threads waiting next in line
 	mutex->curr_thread = NULL;
@@ -408,7 +407,8 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex) {
 /* destroy the mutex */
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex) {
 	// Deallocate dynamic memory created in rpthread_mutex_init
-
+	
+	free(mutex->curr_thread);
 	return 0;
 };
 
@@ -447,10 +447,11 @@ void priorityBoost(){
 	for(int i = 1; i < 4; i++){//runs 3x
 		// first check if lower queue is empty
 		while(isQueueEmpty(mlfq[i]) == 0){// 0 -> not empty
+			qNode *tempNode = deQueue(mlfq[i]);
 			// change status of nodes
-			mlfq[i]->front->data->priority = 0;
+			tempNode->data->priority = 0;
 			// enQueue output of deQueue
-			enQueue(mlfq[0],mlfq[i]->front->data);
+			enQueue(mlfq[0],tempNode->data);
 		}
 	}
 	
@@ -565,7 +566,7 @@ static void sched_mlfq() {
 			continue;
 		}else{//not empty
 			currentThreadTCB = deQueue(mlfq[i])->data;
-			printf("job found on queue:%d\n",i);
+			//printf("job found on queue:%d\n",i);
 			return;
 		}
 	}
