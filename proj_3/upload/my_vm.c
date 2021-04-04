@@ -1,5 +1,74 @@
 #include "my_vm.h"
 
+/*Helper functions regarding bit parsing*/
+static unsigned long get_top_bits(unsigned long value,  int num_bits)
+{
+    //Assume you would require just the higher order (outer)  bits,
+    //that is first few bits from a number (e.g., virtual address)
+    //So given an  unsigned int value, to extract just the higher order (outer)  “num_bits”
+    int num_bits_to_prune = 32 - num_bits; //32 assuming we are using 32-bit address
+    return (value >> num_bits_to_prune);
+}
+
+static unsigned long get_mid_bits (unsigned long value, int num_middle_bits, int num_lower_bits)
+{
+
+   //value corresponding to middle order bits we will returning.
+   unsigned long mid_bits_value = 0;   
+    
+   // First you need to remove the lower order bits (e.g. PAGE offset bits). 
+   value =    value >> num_lower_bits; 
+
+
+   // Next, you need to build a mask to prune the outer bits. How do we build a mask?   
+
+   // Step1: First, take a power of 2 for “num_middle_bits”  or simply,  a left shift of number 1.  
+   // You could try this in your calculator too.
+   unsigned long outer_bits_mask =   (1 << num_middle_bits);  
+
+   // Step 2: Now subtract 1, which would set a total of  “num_middle_bits”  to 1 
+   outer_bits_mask = outer_bits_mask-1;
+
+   // Now time to get rid of the outer bits too. Because we have already set all the bits corresponding 
+   // to middle order bits to 1, simply perform an AND operation. 
+   mid_bits_value =  value &  outer_bits_mask;
+
+  return mid_bits_value;
+
+}
+
+static void set_bit_at_index(char *bitmap, int index)
+{
+    // We first find the location in the bitmap array where we want to set a bit
+    // Because each character can store 8 bits, using the "index", we find which 
+    // location in the character array should we set the bit to.
+    char *region = ((char *) bitmap) + (index / 8);
+    
+    // Now, we cannot just write one bit, but we can only write one character. 
+    // So, when we set the bit, we should not distrub other bits. 
+    // So, we create a mask and OR with existing values
+    char bit = 1 << (index % 8);
+
+    // just set the bit to 1. NOTE: If we want to free a bit (*bitmap_region &= ~bit;)
+    *region |= bit;
+   
+    return;
+}
+
+static int get_bit_at_index(char *bitmap, int index)
+{
+    //Same as example 3, get to the location in the character bitmap array
+    char *region = ((char *) bitmap) + (index / 8);
+
+    //Create a value mask that we are going to check if bit is set or not
+    char bit = 1 << (index % 8);
+
+    return (int)(*region >> (index % 8)) & 0x1;
+}
+/////////////////////////////////////////////////////////////////////
+
+
+
 /*
 Function responsible for allocating and setting your physical memory 
 */
@@ -73,7 +142,21 @@ pte_t *translate(pde_t *pgdir, void *va) {
     * Part 2 HINT: Check the TLB before performing the translation. If
     * translation exists, then you can return physical address from the TLB.
     */
+    unsigned long virtual_address = (unsigned long)(*va);
+    //break up into outer PN, inner PN, offset
+    unsigned long pd_bits = get_top_bits(virtual_address, 10);
+    unsigned long in_bits = get_mid_bits(virtual_address, 10, 12);
+    unsigned long offset_bits = get_mid_bits(virtual_address, 12, 0);
 
+    //checking if PD valid
+    if(pd_valid_mask /*create this as a GLOBAL*/ & *(pd_ptr /*create this as a GLOBAL*/ + pd_bits) == 1){
+	//go to the page table
+    }else{
+    	printf("Invalid translation\n");
+	return NULL;
+    }
+
+    
 
     //If translation not successfull
     return NULL; 
