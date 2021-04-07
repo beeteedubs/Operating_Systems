@@ -1,5 +1,11 @@
 #include "my_vm.h"
 
+int addressing_bits = 32;	// given in project description
+int total_vpn_bits; 		// includes page directory and page table bits
+int offset_bits; 			// bits for offset
+int pd_bits; 				// bits for page directory
+int pt_bits;				// bits for page table
+int num_pages;				// number of pages in fake physical memory
 /*Helper functions regarding bit parsing*/
 static unsigned long get_top_bits(unsigned long value,  int num_bits)
 {
@@ -80,6 +86,26 @@ void set_physical_mem() {
     
     //HINT: Also calculate the number of physical and virtual pages and allocate
     //virtual and physical bitmaps and initialize them
+
+	/* 				GIVEN				*/
+	
+	// # offset bits
+	// ex: 4096 bits/page -> 1000...000 (12 0 's) -> 12  offset bits = # of times >> until < 1
+	int p = PGSIZE;
+    offset_bits = 0;
+    while (p > 1) {
+        p>>=1;
+        offset_bits++;
+    }
+
+	// ex: total_VPN_bits = 32 - 12 = 20 (ie 10 for PD and 10 PT)
+	total_vpn_bits = addressing_bits - offset_bits;
+
+	// ex: 20 VPN bits -> split half for 2 level page tables
+	pt_bits = total_vpn_bits/2;
+	pd_bits = addressing_bits - offset_bits - pt_bits;
+
+	// ex
 
 }
 
