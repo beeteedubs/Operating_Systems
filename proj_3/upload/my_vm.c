@@ -84,9 +84,11 @@ static int get_bit_at_index(char *bitmap, int index)
     return (int)(*region >> (index % 8)) & 0x1;
 }
 
-//traboolean check_bitmap(char* bitmap, int index
+//boolean check_bitmap(char* bitmap, int index
 
 //boolean check_bounds
+
+//int get_vpn()
 /////////////////////////////////////////////////////////////////////
 
 
@@ -213,7 +215,6 @@ pte_t *translate(pde_t *pgdir, unsigned long  *va) {
     * translation exists, then you can return physical address from the TLB.
     */
 
-	/* 				GIVEN 			*/
 
 	// get those 32 bits
     unsigned long virtual_address = (unsigned long)(*va);
@@ -271,15 +272,50 @@ as an argument, and sets a page table entry. This function will walk the page
 directory to see if there is an existing mapping for a virtual address. If the
 virtual address is not present, then a new entry will be added
 */
-int
-page_map(pde_t *pgdir, void *va, void *pa)
+int page_map(pde_t *pgdir, void *va, void *pa)
 {
 
     /*HINT: Similar to translate(), find the page directory (1st level)
     and page table (2nd-level) indices. If no mapping exists, set the
     virtual to physical mapping */
 
-    return -1;
+	/* check if existing mapping using virt_bitmap and extracting VPN*/
+
+	// get those 32 bits
+    unsigned long virtual_address = (unsigned long)(va);
+	unsigned long physical_address = (unsigned long)(pa);
+
+    //break up into outer PN, inner PN, offset
+
+	// ex: pd_bits will provide the index (ie 12 for PDE at index 12)
+    unsigned long pd_index = get_top_bits(virtual_address, num_pd_bits); //note: generalized get_top_bits(va,10)
+    unsigned long pt_index = get_mid_bits(virtual_address, num_pt_bits, num_offset_bits);
+    unsigned long offset = get_mid_bits(virtual_address, num_offset_bits, 0);
+
+    //get VPN
+	unsigned long vpn  = pd_index * num_pte + pt_index;
+	
+	// if VPN not in bounds, return
+	if(!((vpn < num_virt_pages) && (vpn>0))){
+		printf("VPN: %ld is out of bounds\n",vpn);
+		return -1;
+	}
+	
+	// if VPN is invalid, set to be valid
+	if(get_bit_at_index(virt_bitmap,vpn)==0){
+		printf("VPN: %ld is invalid, setting to be valid now\n",vpn);
+		//////////////////NOT SURE ABT THIS//////////////////////
+		set_bit_at_index(virt_bitmap,vpn)==0;// is this all?
+	}else{
+		printf("already entry here\n");
+	}
+	// find page table
+	pde_t* page_table = pd[pd_index];
+	
+	// set physical address in pte;
+	page_table[pt_index] = physical_address;
+
+    return 1;
 }
 
 
