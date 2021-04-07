@@ -83,6 +83,10 @@ static int get_bit_at_index(char *bitmap, int index)
 
     return (int)(*region >> (index % 8)) & 0x1;
 }
+
+//traboolean check_bitmap(char* bitmap, int index
+
+//boolean check_bounds
 /////////////////////////////////////////////////////////////////////
 
 
@@ -138,6 +142,9 @@ void set_physical_mem() {
     // initialize all bits = 0
     memset(virt_bitmap,0,num_virt_pages / sizeof(char));
     memset(phys_bitmap,0,num_phys_pages / sizeof(char));
+	
+	// indicate that PD takes first VPN, so should be set
+	set_bit_at_index(virt_bitmap,0); 
 
 	// reserve PD from phys_mem
 	// cast to prevent warning and error
@@ -212,27 +219,49 @@ pte_t *translate(pde_t *pgdir, unsigned long  *va) {
     unsigned long virtual_address = (unsigned long)(*va);
 
     //break up into outer PN, inner PN, offset
-    unsigned long pd_bits = get_top_bits(virtual_address, num_pd_bits);
-    unsigned long pt_bits = get_mid_bits(virtual_address, num_pt_bits, num_offset_bits);
-    unsigned long offset_bits = get_mid_bits(virtual_address, num_offset_bits, 0);
 
-    //check if PD valid in bitmap 
-	unsigned long* pde_addr = *(pd+pd_bits*sizeof(pde_t));
+	// ex: pd_bits will provide the index (ie 12 for PDE at index 12)
+    unsigned long pd_index = get_top_bits(virtual_address, num_pd_bits); //note: generalized get_top_bits(va,10)
+    unsigned long pt_index = get_mid_bits(virtual_address, num_pt_bits, num_offset_bits);
+    unsigned long offset = get_mid_bits(virtual_address, num_offset_bits, 0);
 
-	/*
-    if(pd_valid_mask create this as a GLOBAL & *(pd_ptr create this as a GLOBAL + pd_bits) == 1){
-	//go to the page table
-    }else{
-    	printf("Invalid translation\n");
-	return NULL;
-    }
+    //get VPN
+	unsigned long vpn  = pd_index * num_pte + pt_index;
+
+	// if VPN not in bounds, return
+	if(!((vpn < num_virt_pages) && (vpn>0))){
+		printf("VPN: %ld is out of bounds\n",vpn);
+		return NULL;
+	}
 	
-	*/
+	// if VPN is invalid, also return
+	if(get_bit_at_index(virt_bitmap,vpn)==0){
+		printf("VPN: %ld is invalid\n",vpn);
+		return NULL;
+	}
 
-    
+	pde_t* page_table = pd[pd_index]
 
-    //If translation not successfull
-    return NULL; 
+	// confirmed, but double check PD has the PT
+	//////////////////NOT SURE ABT THIS//////////////////////
+	if(page_table == NULL){// get_bit_at_index(phys_bitmap,pd[pd_index])==0 could also work? 
+		printf("Physical in the PDE hasn't been set yet\n");
+		return NULL;
+	}
+
+	pte_t *phys_addr = &(page_table[pt_index]);
+
+
+	// phys_mem < phys_addr < phys_mem+memsize
+	//////////////////NOT SURE ABT THIS//////////////////////
+	if( (*phys_addr<(unsigned long) phys_mem) || (*phys_addr > (unsigned long)phys_mem) + MEMSIZE){
+		printf("physical address is not w/in bounds of MEMSIZE\n"); // needs to be MEMSIZE not MAX_MEMSIZE
+		return NULL;
+	}
+
+	*phys_addr+=offset;
+
+	return phys_addr;
 }
 
 

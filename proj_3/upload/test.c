@@ -24,5 +24,10 @@ int main(){
 		printf("ptr[%d]:%d\n",j,ptr[j]);
 	}
 	foo2(ptr);
+
+	char b = 'b';
+	char *a = &b;
+	unsigned long b = 23;
+	printf(
 	return 0;
 }
