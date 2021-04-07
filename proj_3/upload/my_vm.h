@@ -8,6 +8,9 @@
 //Page size is 4KB
 
 //Add any important includes here which you may need
+#include <string.h>
+#include <pthread.h>
+
 
 #define PGSIZE 4096
 
@@ -37,7 +40,7 @@ struct tlb tlb_store;
 
 
 void set_physical_mem();
-pte_t* translate(pde_t *pgdir, void *va);
+pte_t* translate(pde_t *pgdir, unsigned long *va);
 int page_map(pde_t *pgdir, void *va, void* pa);
 bool check_in_tlb(void *va);
 void put_in_tlb(void *va, void *pa);

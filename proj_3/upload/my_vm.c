@@ -1,11 +1,23 @@
 #include "my_vm.h"
 
-int addressing_bits = 32;	// given in project description
-int total_vpn_bits; 		// includes page directory and page table bits
-int offset_bits; 			// bits for offset
-int pd_bits; 				// bits for page directory
-int pt_bits;				// bits for page table
-int num_pages;				// number of pages in fake physical memory
+char* phys_mem;				// 1GB memory space to address 4GB
+char* virt_bitmap;			// (required) each bit represents whether virtual page allocated or not
+char* phys_bitmap;			// (required) each bit represents whether allocated or not
+
+int num_addressing_bits=32;	// given in project description
+int num_vpn_bits; 			// includes page directory and page table bits
+int num_offset_bits; 		// bits for offset
+int num_pd_bits; 			// bits for page directory
+int num_pt_bits;			// bits for page table
+int num_pde;
+int num_pte;
+
+int num_virt_pages;			// number of pages in fake physical memory
+int num_phys_pages;			// number of pages in whole address space
+
+pde_t** pd;					// pointer to PD, ** since it's array of arrays
+
+
 /*Helper functions regarding bit parsing*/
 static unsigned long get_top_bits(unsigned long value,  int num_bits)
 {
@@ -92,21 +104,44 @@ void set_physical_mem() {
 	// # offset bits
 	// ex: 4096 bits/page -> 1000...000 (12 0 's) -> 12  offset bits = # of times >> until < 1
 	int p = PGSIZE;
-    offset_bits = 0;
+    num_offset_bits = 0;
     while (p > 1) {
         p>>=1;
-        offset_bits++;
+        num_offset_bits++;
     }
 
 	// ex: total_VPN_bits = 32 - 12 = 20 (ie 10 for PD and 10 PT)
-	total_vpn_bits = addressing_bits - offset_bits;
+	num_vpn_bits = num_addressing_bits - num_offset_bits;
 
+	// # bits for in 32 bits for indexing in PD and PT
 	// ex: 20 VPN bits -> split half for 2 level page tables
-	pt_bits = total_vpn_bits/2;
-	pd_bits = addressing_bits - offset_bits - pt_bits;
+	num_pt_bits = num_vpn_bits/2;
+	num_pd_bits = num_addressing_bits - num_offset_bits - num_pt_bits;
 
-	// ex
+	// # of PTE and PDE
+	// ex: 10 bits for page table, so 2^10 entries
+	num_pte = 1<<num_pt_bits;
+	num_pde = 1<<num_pd_bits;
 
+	//  # of virtual and physical pages
+	// ex: 4GB support, so 4GB/4KB = 2^20 pages 
+	num_virt_pages = MAX_MEMSIZE/PGSIZE;
+	num_phys_pages = MEMSIZE/PGSIZE;
+
+	// fake physical memory
+	phys_mem = (char*)malloc(sizeof(char)*MEMSIZE);
+
+	// divide by 8 because chars are 8 bits, and each char holds 8 pages
+	virt_bitmap = (char*) malloc( num_virt_pages / sizeof(char) );
+    phys_bitmap = (char*) malloc( num_phys_pages / sizeof(char) );
+
+    // initialize all bits = 0
+    memset(virt_bitmap,0,num_virt_pages / sizeof(char));
+    memset(phys_bitmap,0,num_phys_pages / sizeof(char));
+
+	// reserve PD from phys_mem
+	// cast to prevent warning and error
+	pd = (unsigned long *) phys_mem;
 }
 
 
@@ -160,7 +195,9 @@ print_TLB_missrate()
 The function takes a virtual address and page directories starting address and
 performs translation to return the physical address
 */
-pte_t *translate(pde_t *pgdir, void *va) {
+//pte_t *translate(pde_t *pgdir, void *va) {
+pte_t *translate(pde_t *pgdir, unsigned long  *va) {
+
     /* Part 1 HINT: Get the Page directory index (1st level) Then get the
     * 2nd-level-page table index using the virtual address.  Using the page
     * directory index and page table index get the physical address.
@@ -168,19 +205,29 @@ pte_t *translate(pde_t *pgdir, void *va) {
     * Part 2 HINT: Check the TLB before performing the translation. If
     * translation exists, then you can return physical address from the TLB.
     */
-    unsigned long virtual_address = (unsigned long)(*va);
-    //break up into outer PN, inner PN, offset
-    unsigned long pd_bits = get_top_bits(virtual_address, 10);
-    unsigned long in_bits = get_mid_bits(virtual_address, 10, 12);
-    unsigned long offset_bits = get_mid_bits(virtual_address, 12, 0);
 
-    //checking if PD valid
-    if(pd_valid_mask /*create this as a GLOBAL*/ & *(pd_ptr /*create this as a GLOBAL*/ + pd_bits) == 1){
+	/* 				GIVEN 			*/
+
+	// get those 32 bits
+    unsigned long virtual_address = (unsigned long)(*va);
+
+    //break up into outer PN, inner PN, offset
+    unsigned long pd_bits = get_top_bits(virtual_address, num_pd_bits);
+    unsigned long pt_bits = get_mid_bits(virtual_address, num_pt_bits, num_offset_bits);
+    unsigned long offset_bits = get_mid_bits(virtual_address, num_offset_bits, 0);
+
+    //check if PD valid in bitmap 
+	unsigned long* pde_addr = *(pd+pd_bits*sizeof(pde_t));
+
+	/*
+    if(pd_valid_mask create this as a GLOBAL & *(pd_ptr create this as a GLOBAL + pd_bits) == 1){
 	//go to the page table
     }else{
     	printf("Invalid translation\n");
 	return NULL;
     }
+	
+	*/
 
     
 
