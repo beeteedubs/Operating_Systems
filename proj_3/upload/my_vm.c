@@ -17,7 +17,10 @@ int num_phys_pages;			// number of pages in whole address space
 
 pde_t** pd;					// pointer to PD, ** since it's array of arrays
 
-
+void testing(){
+	printf("testing\n");
+	return;
+}
 /*Helper functions regarding bit parsing*/
 static unsigned long get_top_bits(unsigned long value,  int num_bits)
 {
@@ -145,12 +148,18 @@ void set_physical_mem() {
     memset(virt_bitmap,0,num_virt_pages / sizeof(char));
     memset(phys_bitmap,0,num_phys_pages / sizeof(char));
 	
-	// indicate that PD takes first VPN, so should be set
+	// indicate that PD and a page table takes  VPN 0 and VPN 1, so should be set
 	set_bit_at_index(virt_bitmap,0); 
+	set_bit_at_index(virt_bitmap,1); 
+
+	// indicate that physical page number 0 and 1 taken
+	set_bit_at_index(phys_bitmap,0); 
+	set_bit_at_index(phys_bitmap,1); 
+
 
 	// reserve PD from phys_mem
 	// cast to prevent warning and error
-	pd = (unsigned long *) phys_mem;
+	pd = (unsigned long**) phys_mem;
 }
 
 
@@ -204,8 +213,7 @@ print_TLB_missrate()
 The function takes a virtual address and page directories starting address and
 performs translation to return the physical address
 */
-//pte_t *translate(pde_t *pgdir, void *va) {
-pte_t *translate(pde_t *pgdir, unsigned long  *va) {
+pte_t *translate(pde_t *pgdir, void *va) {
 
     /* Part 1 HINT: Get the Page directory index (1st level) Then get the
     * 2nd-level-page table index using the virtual address.  Using the page
@@ -215,41 +223,61 @@ pte_t *translate(pde_t *pgdir, unsigned long  *va) {
     * translation exists, then you can return physical address from the TLB.
     */
 
+	/*get VPN */
 
-	// get those 32 bits
-    unsigned long virtual_address = (unsigned long)(*va);
+	//convert input
+    unsigned long virtual_address =*((unsigned long*)(va)); // cast, then deref
 
     //break up into outer PN, inner PN, offset
-
-	// ex: pd_bits will provide the index (ie 12 for PDE at index 12)
     unsigned long pd_index = get_top_bits(virtual_address, num_pd_bits); //note: generalized get_top_bits(va,10)
     unsigned long pt_index = get_mid_bits(virtual_address, num_pt_bits, num_offset_bits);
     unsigned long offset = get_mid_bits(virtual_address, num_offset_bits, 0);
 
-    //get VPN
-	unsigned long vpn  = pd_index * num_pte + pt_index;
+    //VPN = page directory index * number of entries in page table + page table index
+	unsigned long vpn  = pd_index * num_pte + pt_index; // 2*1024+5 = ...
 
+	// check VPN = textbook solution = (virtual address & vpn mask) >> shift (TO DO LATER)
+	//unsigned long *vpn_mask;
+	//memset(vpn_mask,0,4);
+	//unsigned long vpn_check = virtual_address & vpn_mask >> shift
+
+
+	/* check VPN */
 	// if VPN not in bounds, return
 	if(!((vpn < num_virt_pages) && (vpn>0))){
-		printf("VPN: %ld is out of bounds\n",vpn);
+		printf("VPN: %lu is out of bounds\n",vpn);
 		return NULL;
 	}
 	
-	// if VPN is invalid, also return
+	// if VPN is invalid, return
 	if(get_bit_at_index(virt_bitmap,vpn)==0){
-		printf("VPN: %ld is invalid\n",vpn);
+		printf("VPN: %lu is invald\n",vpn);
 		return NULL;
 	}
 
-	pde_t* page_table = pd[pd_index]
-
-	// confirmed, but double check PD has the PT
-	//////////////////NOT SURE ABT THIS//////////////////////
-	if(page_table == NULL){// get_bit_at_index(phys_bitmap,pd[pd_index])==0 could also work? 
-		printf("Physical in the PDE hasn't been set yet\n");
+	/*find and check if PDE contains a valid physical frame number (ie there's a page table at this physical address w/ at least 1 valid PTE) in physical memory*/
+	// find PDE = index into pd pointer
+	pde_t* page_table = pd[pd_index]; // pointer since pd is **, and points to first PDE in page table
+	if(get_bit_at_index(phys_bitmap,*page_table)==0){// whole entry is PFN
+		printf("pde points to invaliiid physical page # according to phys_bitmap\n");
 		return NULL;
 	}
+	/*find and check if PTE valid and return physical address*/
 
+	//find PTE= pde.pfn + pt_index*sizeof(pte)
+	pte_t pte = page_table[pt_index];
+
+	//double-check that it's valid and return
+	if(get_bit_at_index(phys_bitmap,pte)==1){
+		printf("pte: %lu,\n");
+		pte+=offset;
+		printf("pte+offset:%lu\n");
+		return pte;
+	}
+	/*
+	///////NOT SUTE ABOUT THIS////
+
+	// check if pde is valid by getting the page frame number (
 	pte_t *phys_addr = &(page_table[pt_index]);
 
 
@@ -263,6 +291,7 @@ pte_t *translate(pde_t *pgdir, unsigned long  *va) {
 	*phys_addr+=offset;
 
 	return phys_addr;
+	*/
 }
 
 
@@ -303,9 +332,9 @@ int page_map(pde_t *pgdir, void *va, void *pa)
 	
 	// if VPN is invalid, set to be valid
 	if(get_bit_at_index(virt_bitmap,vpn)==0){
-		printf("VPN: %ld is invalid, setting to be valid now\n",vpn);
+		printf("VPN: %ld is invallid, setting to be valid now\n",vpn);
 		//////////////////NOT SURE ABT THIS//////////////////////
-		set_bit_at_index(virt_bitmap,vpn)==0;// is this all?
+		set_bit_at_index(virt_bitmap,vpn);// is this all?
 	}else{
 		printf("already entry here\n");
 	}
