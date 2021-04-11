@@ -24,6 +24,24 @@ void testing(){
 }
 
 
+/*Function that gets the next available page
+*/
+void *get_next_phys_avail(){
+	
+	int i = 0; // index of virtual pages (ex: i's range=[0,2^32-1])
+	static int phys_start = -1; // start index of virtual pages
+
+	while(i<num_phys_pages){ // while no starting point o
+		if(get_bit_at_index(phys_bitmap,i) == 0){// it's free!
+			phys_start = i;
+			set_bit_at_index(phys_bitmap,i);
+			break;
+		}
+		i++;
+	}
+	return &phys_start;
+
+}
 
 /*Helper functions regarding bit parsing*/
 static unsigned long get_top_bits(unsigned long value,  int num_bits)
@@ -185,7 +203,7 @@ void set_physical_mem() {
 	set_bit_at_index(phys_bitmap,actual_pa); 
 	*pte_addr = actual_pa;
 
-	is_phys_mem_init = True;
+	is_phys_mem_init = true;
 	return;
 	/*
 	pte_t pte2 = *pde2;
@@ -359,6 +377,8 @@ int page_map(pde_t *pgdir, void *va, void *pa)
     unsigned long pt_index = get_mid_bits(virtual_address, num_pt_bits, num_offset_bits);
     unsigned long offset = get_mid_bits(virtual_address, num_offset_bits, 0);
 
+	unsigned long physical_pn = get_top_bits(physical_address,30-offset);//30-12 = 18, 2^18 pages
+
     //get VPN
 	unsigned long vpn  = pd_index * num_pte + pt_index;
 	
@@ -368,26 +388,42 @@ int page_map(pde_t *pgdir, void *va, void *pa)
 		return -1;
 	}
 	
-	// if VPN is invalid, set to be valid
-	if(get_bit_at_index(virt_bitmap,vpn)==0){
+	// if VPN and Physical PN invalid, set to be valid cuz we creating the mapping now boyyyy
+	if(get_bit_at_index(virt_bitmap,vpn)==0 && get_bit_at_index(phys_bitmap,physical_pn)==0){
 		printf("VPN: %ld is invallid, setting to be valid now\n",vpn);
-		//////////////////NOT SURE ABT THIS//////////////////////
-		set_bit_at_index(virt_bitmap,vpn);// is this all?
-	}else{
-		printf("already entry here\n");
-	}
-	// find page table
-	pde_t* page_table = pd[pd_index];
+		
+		// this could be invalid, meaning we need a new page table
+		if((pd[pd_index]) == 0){// get PFN to put new page table
+			pd[pd_index] = *((pte_t*)(get_next_phys_avail())); //ex: next free PFN was 101 
+		}
+
+		// get physical frame number
+		pde_t pde_pfn = pd[pd_index];
+
+		// get page table w/ physical frame number
+		unsigned long *page_table = (unsigned long*)(phys_mem+(pde_pfn<<num_pt_bits));
+
+		//get PTE address by indexing down the page table
+		pte_t *pte_addr = page_table + pt_index*sizeof(pte_t);
 	
-	// set physical address in pte;
-	page_table[pt_index] = physical_address;
+		// set physical address in pte;
+		*pte_addr = physical_address;
+
+		//change phys_bitmap
+		set_bit_at_index(virt_bitmap,vpn);
+		set_bit_at_index(phys_bitmap,physical_pn);
+	}else{
+		printf("already entry here...wait isn't that bad?\n");
+		return -1;
+	}
+
+	/*map*/
+
 
     return 1;
 }
 
 
-/*Function that gets the next available page
-*/
 void *get_next_avail(int num_pages) {
 	/*
 	   - find num_pages of free+contiguous virtual  pages in virt_bitmap (ex: find 2 pages for 4076 B)
@@ -418,14 +454,14 @@ void *get_next_avail(int num_pages) {
 			int count = 1;
 			while(count<num_pages){//start at 1, since already counting first page
 				if(get_bit_at_index(virt_bitmap,i)==1){//restart!
-					virt_start = -1
+					virt_start = -1;
 					break;
 				}
 				i++;
 				count++;
 			}
 			if(virt_start != -1){
-				return &virt_start
+				return &virt_start;
 		}else{
 			i++;
 		}
@@ -442,9 +478,9 @@ void *a_malloc(unsigned int num_bytes) {
     /* 
      * HINT: If the physical memory is not yet initialized, then allocate and initialize.
      */
-	while(is_phys_mem_init == False){
+	while(is_phys_mem_init == false){
 		set_physical_mem();
-		is_phys_mem_init = True;
+		is_phys_mem_init = true;
 	}
 	/* 
     * HINT: If the page directory is not initialized, then initialize the
@@ -452,7 +488,6 @@ void *a_malloc(unsigned int num_bytes) {
     * free pages are available, set the bitmaps and map a new page. Note, you will 
     * have to mark which physical pages are used. 
     */
-	
 	/*
 	- get ptr w/ next_avail
 		- figure out # bytes
@@ -461,19 +496,18 @@ void *a_malloc(unsigned int num_bytes) {
 	- set virt_bitmap
 	- loop thru free, potentially uncontinguous physical bitmaps/pages  assign
 	 */
-
 	// get num_pages
 	int num_pages = (int)ceil((double)(num_bytes/PGSIZE));
 	printf("num_pages: %d, num_bytes/PGSIZE: %d",num_pages, num_bytes/PGSIZE);
 
 	// get ptr to virtual address from VPN
-	unsigned long vpn = *(get_next_avail(num_pages));
+	unsigned long vpn = *(unsigned long*)(get_next_avail(num_pages));
 	if(vpn!=-1){//oops, not continguous virtual addresses left :(
 		printf("oops, not continguous virtual addresses left :(\n");
 	}
 
 	unsigned long virtual_address = vpn*PGSIZE;
-	static unsigned long va_ptr = &virtual_address; // return this
+	unsigned long* va_ptr = &virtual_address; // return this
 
 	// set virt_bitmap
 	for(int virt_page = vpn;virt_page<vpn+num_pages;virt_page++){
@@ -481,12 +515,14 @@ void *a_malloc(unsigned int num_bytes) {
 	}
 
 	// map and set phys_bitmap
-	for(int phys_page = 0; phys_page<num_phys_bits; phys_page++){
+	for(int phys_page = 0; phys_page<num_phys_pages; phys_page++){
 		if(get_bit_at_index(phys_bitmap,phys_page)==0){ // map to here!
+			return NULL;
+		}
+	}
 
 
-
-    return NULL;
+    return (void*) va_ptr;}
 }
 
 /* Responsible for releasing one or more memory pages using virtual address (va)
@@ -499,7 +535,7 @@ void a_free(void *va, int size) {
      *
      * Part 2: Also, remove the translation from the TLB
      */
-     
+     return;
     
 }
 
@@ -516,7 +552,7 @@ void put_value(void *va, void *val, int size) {
      */
 
 
-
+	return;
 
 }
 
@@ -529,7 +565,7 @@ void get_value(void *va, void *val, int size) {
     */
 
 
-
+	return;
 
 }
 
@@ -548,9 +584,6 @@ void mat_mult(void *mat1, void *mat2, int size, void *answer) {
      * getting the values from two matrices, you will perform multiplication and 
      * store the result to the "answer array"
      */
-
+	return ;
        
 }
-
-
-
