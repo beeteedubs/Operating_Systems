@@ -19,8 +19,10 @@ int main(){
 
 	set_physical_mem();
 	//unsigned long addr = 2147483648; // printf invalid cuz nothing at vpn 52...
-	unsigned long addr = 1<<13;
-	unsigned long *ptr_addr = &addr;
+	unsigned long virt_addr = 1<<13;
+	unsigned long phys_addr = 1<<14;
+	unsigned long *ptr_addr = &virt_addr;
+	int page_map_return = page_map(NULL,(void*)ptr_addr,&phys_addr);
 	pte_t *ptr = translate(NULL,(void*)ptr_addr);
 	printf("physical address: %ld",*ptr);
 	return 0;

@@ -1,5 +1,5 @@
 
-all : test test2
+all : test2
 test: ../my_vm.h
 	gcc test.c -L../ -lmy_vm -m32 -o test
 
