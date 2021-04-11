@@ -18,6 +18,9 @@ int main(){
 */  
 
 	set_physical_mem();
+	unsigned int x = 4096;
+	void* a = a_malloc(x);
+	a_free(a,4096);
 	//unsigned long addr = 2147483648; // printf invalid cuz nothing at vpn 52...
 	unsigned long virt_addr = 1<<13;
 	unsigned long phys_addr = 1<<14;
