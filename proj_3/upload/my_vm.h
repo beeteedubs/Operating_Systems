@@ -8,6 +8,9 @@
 //Page size is 4KB
 
 //Add any important includes here which you may need
+#include <string.h>
+#include <pthread.h>
+#include <math.h>
 
 #define PGSIZE 4096
 
@@ -35,12 +38,19 @@ struct tlb {
 };
 struct tlb tlb_store;
 
-
+void testing();
+static unsigned long get_top_bits(unsigned long value, int num_bits);
+static unsigned long get_mid_bits(unsigned long value, int num_middle_bits, int num_lower_bits);
+static void set_bit_at_index(char* bitmap, int index);
+static int get_bit_at_index(char *bitmap, int index);
+void get_all_bits(char *bitmap);
 void set_physical_mem();
 pte_t* translate(pde_t *pgdir, void *va);
 int page_map(pde_t *pgdir, void *va, void* pa);
 bool check_in_tlb(void *va);
 void put_in_tlb(void *va, void *pa);
+void *get_next_phys_avail();
+void *get_next_avail(int num_pages);
 void *a_malloc(unsigned int num_bytes);
 void a_free(void *va, int size);
 void put_value(void *va, void *val, int size);
