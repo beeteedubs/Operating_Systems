@@ -3,7 +3,7 @@ CFLAGS = -g -c -m32
 AR = ar -rc
 RANLIB = ranlib
 
-all: my_vm.a test
+all: my_vm.a 
 
 my_vm.a: my_vm.o
 	$(AR) libmy_vm.a my_vm.o
