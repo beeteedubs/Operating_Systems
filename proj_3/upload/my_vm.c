@@ -294,9 +294,6 @@ pte_t *translate(pde_t *pgdir, void *va) {
 	//memset(vpn_mask,0,4);
 	//unsigned long vpn_check = virtual_address & vpn_mask >> shift
 
-
-
-	/* check VPN
 	// if VPN not in bounds, return
 	if(!((vpn < num_virt_pages) && (vpn>0))){
 		printf("VPN: %lu is out of bounds\n",vpn);
@@ -308,7 +305,6 @@ pte_t *translate(pde_t *pgdir, void *va) {
 		printf("VPN: %lu is invald\n",vpn);
 		return NULL;
 	}
-	 */
 
 	/*find and check if PDE contains a valid physical frame number (ie there's a page table at this physical address w/ at least 1 valid PTE) in physical memory*/
 	// find PDE = index into pd pointer
@@ -360,8 +356,7 @@ int page_map(pde_t *pgdir, void *va, void *pa)
     unsigned long pt_index = get_mid_bits(virtual_address, num_pt_bits, num_offset_bits);
     unsigned long offset = get_mid_bits(virtual_address, num_offset_bits, 0);
 
-	unsigned long physical_pn = get_top_bits(physical_address,30-offset);//30-12 = 18, 2^18 pages
-
+	unsigned long physical_pn = get_mid_bits(physical_address,30-num_offset_bits,num_offset_bits);//18 mid bits after offset (ignore 1st 2 bits)
     //get VPN
 	unsigned long vpn  = pd_index * num_pte + pt_index;
 	
@@ -380,7 +375,7 @@ int page_map(pde_t *pgdir, void *va, void *pa)
 			pd[pd_index] = *((pte_t*)(get_next_phys_avail())); //ex: next free PFN was 101 
 		}
 
-		// get physical frame number
+		// get physical frame number, which gives location of page table
 		pde_t pde_pfn = pd[pd_index];
 
 		// get page table w/ physical frame number
@@ -463,21 +458,21 @@ void *a_malloc(unsigned int num_bytes) {
      * HINT: If the physical memory is not yet initialized, then allocate and initialize.
      */
 
-	pthread_mutex_lock(&mutex);
-
-	if(is_phys_mem_init == false){
-		set_physical_mem();
-		is_phys_mem_init = true;
-	}
 	/* 
     * HINT: If the page directory is not initialized, then initialize the
     * page directory. Next, using get_next_avail(), check if there are free pages. If
     * free pages are available, set the bitmaps and map a new page. Note, you will 
     * have to mark which physical pages are used. 
     */
+	pthread_mutex_lock(&mutex);
+
+	if(is_phys_mem_init == false){
+		set_physical_mem();
+		is_phys_mem_init = true;
+	}
 	// get num_pages
 	int num_pages = (int)ceil((double)(num_bytes/PGSIZE));
-	printf("num_pages: %d, num_bytes/PGSIZE: %d\n",num_pages, num_bytes/PGSIZE);
+	printf("checking-- should be same: num_pages: %d, num_bytes/PGSIZE: %d\n",num_pages, num_bytes/PGSIZE);
 
 	// get ptr to virtual address from VPN
 	unsigned long vpn = *(unsigned long*)(get_next_avail(num_pages));
@@ -488,21 +483,28 @@ void *a_malloc(unsigned int num_bytes) {
 		return NULL;
 	}
 
-	// do same w/ physical
+	// start mapping!
 
-	unsigned long virtual_address = vpn*PGSIZE;
+	unsigned long virtual_address = vpn*PGSIZE;//remember no offset here
 	unsigned long* va_ptr = &virtual_address; // return this
-	// set virt_bitmap
-	for(int virt_page = vpn;virt_page<vpn+num_pages;virt_page++){
-		set_bit_at_index(virt_bitmap,virt_page);
-	}
-	// map and set phys_bitmap
-	for(int phys_page = 0; phys_page<num_phys_pages; phys_page++){
-		if(get_bit_at_index(phys_bitmap,phys_page)==0){ // map to here!
+	unsigned long* ppn;
+	int count = 0;
+	unsigned long page_map_va_ptr; //change later
+	while(count<num_pages){
+		ppn = (unsigned long*)(get_next_phys_avail());
+		page_map_va_ptr =(count+vpn)*PGSIZE;
+		int ret_val = page_map(NULL,(void*)(&page_map_va_ptr),(void*)(&ppn));//don't need to use counter for ppn 
+		if(ret_val==1){//success
+			printf("success\n");
+		}
+		else{
+			printf("err: failed....\n");
 			return NULL;
 		}
+		count++;
 	}
-    return (void*) va_ptr;
+	pthread_mutex_unlock(&mutex);
+	return (void*)va_ptr;
 }
 
 
