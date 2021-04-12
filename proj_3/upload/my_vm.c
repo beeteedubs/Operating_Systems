@@ -278,7 +278,7 @@ pte_t *translate(pde_t *pgdir, void *va) {
     */
 
 	/*get VPN */
-	unsigned long virtual_address =*((unsigned long*)(va)); // cast, then deref
+	unsigned long virtual_address =(unsigned long)(va); // cast, then deref
 
     //break up into outer PN, inner PN, offset
     unsigned long pd_index = get_top_bits(virtual_address, num_pd_bits); //note: generalized get_top_bits(va,10)
@@ -344,8 +344,8 @@ int page_map(pde_t *pgdir, void *va, void *pa)
 	/* check if existing mapping using virt_bitmap and extracting VPN*/
 
 	// get those 32 bits
-    unsigned long virtual_address =*((unsigned long*)(va));
-	unsigned long physical_address =*((unsigned long*)(pa));
+    unsigned long virtual_address =(unsigned long)(va);
+	unsigned long physical_address =(unsigned long)(pa);
 
     //break up into outer PN, inner PN, offset
 
@@ -431,8 +431,7 @@ and used by the benchmark
 */
 void *a_malloc(unsigned int num_bytes) {
 	printf("a_mallocing------------\n");
-	get_all_bits(phys_bitmap);
-	get_all_bits(virt_bitmap);
+
     /* 
      * HINT: If the physical memory is not yet initialized, then allocate and initialize.
      */
@@ -448,6 +447,8 @@ void *a_malloc(unsigned int num_bytes) {
 	if(is_phys_mem_init == false){
 		set_physical_mem();
 		is_phys_mem_init = true;
+		get_all_bits(phys_bitmap);
+		get_all_bits(virt_bitmap);
 	}
 	// get num_pages
 	int num_pages = num_bytes / PGSIZE;
@@ -477,7 +478,7 @@ void *a_malloc(unsigned int num_bytes) {
 		set_bit_at_index(phys_bitmap,*pa);
 		*pa = (*pa)*PGSIZE;
 		page_map_va_ptr =(count+vpn)*PGSIZE;
-		int ret_val = page_map(NULL,(void*)(&page_map_va_ptr),(void*)(pa));//don't need to use counter for ppn 
+		int ret_val = page_map(NULL,(void*)(page_map_va_ptr),(void*)(*pa));//don't need to use counter for ppn 
 		if(ret_val==1){//success
 			printf("success\n");
 		}
@@ -490,7 +491,7 @@ void *a_malloc(unsigned int num_bytes) {
 	pthread_mutex_unlock(&mutex);
 	get_all_bits(phys_bitmap);
 	get_all_bits(virt_bitmap);
-	return (void*)va_ptr;
+	return (void*)*va_ptr;
 }
 
 
@@ -505,7 +506,7 @@ void a_free(void *va, int size) {
      */
 	printf("a_free---------\n");
 	//get vpn
-    unsigned long virtual_address =*((unsigned long*)(va));
+    unsigned long virtual_address =(unsigned long)(va);
     unsigned long pd_index = get_top_bits(virtual_address, num_pd_bits); //note: generalized get_top_bits(va,10)
     unsigned long pt_index = get_mid_bits(virtual_address, num_pt_bits, num_offset_bits);
     unsigned long offset = get_mid_bits(virtual_address, num_offset_bits, 0);
@@ -555,7 +556,7 @@ void put_value(void *va, void *val, int size) {
 		num_pages++;
 	}
 	int temp_size = size;//remaining bytes to copy left
-	unsigned long virtual_address = *(unsigned long*)va;
+	unsigned long virtual_address = (unsigned long)va;
 
     unsigned long pd_index = get_top_bits(virtual_address, num_pd_bits); //note: generalized get_top_bits(va,10)
     unsigned long pt_index = get_mid_bits(virtual_address, num_pt_bits, num_offset_bits);
@@ -610,7 +611,7 @@ void get_value(void *va, void *val, int size) {
 	}
 
 	int temp_size = size;
-	unsigned long virtual_address = *(unsigned long*)va;
+	unsigned long virtual_address = (unsigned long)va;
 
     unsigned long pd_index = get_top_bits(virtual_address, num_pd_bits); //note: generalized get_top_bits(va,10)
     unsigned long pt_index = get_mid_bits(virtual_address, num_pt_bits, num_offset_bits);
