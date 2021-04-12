@@ -385,7 +385,7 @@ int page_map(pde_t *pgdir, void *va, void *pa)
 		pte_t *pte_addr = page_table + pt_index*sizeof(pte_t);
 	
 		// set physical address in pte;
-		*pte_addr = physical_address;
+		*pte_addr = physical_pn;
 
 		//change phys_bitmap
 		set_bit_at_index(virt_bitmap,vpn);
@@ -487,13 +487,14 @@ void *a_malloc(unsigned int num_bytes) {
 
 	unsigned long virtual_address = vpn*PGSIZE;//remember no offset here
 	unsigned long* va_ptr = &virtual_address; // return this
-	unsigned long* ppn;
+	unsigned long* pa;
 	int count = 0;
 	unsigned long page_map_va_ptr; //change later
 	while(count<num_pages){
-		ppn = (unsigned long*)(get_next_phys_avail());
+		pa = (unsigned long*)(get_next_phys_avail());
+		*pa = (*pa)*PGSIZE;
 		page_map_va_ptr =(count+vpn)*PGSIZE;
-		int ret_val = page_map(NULL,(void*)(&page_map_va_ptr),(void*)(&ppn));//don't need to use counter for ppn 
+		int ret_val = page_map(NULL,(void*)(&page_map_va_ptr),(void*)(&pa));//don't need to use counter for ppn 
 		if(ret_val==1){//success
 			printf("success\n");
 		}
