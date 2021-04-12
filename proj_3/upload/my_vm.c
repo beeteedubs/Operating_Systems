@@ -404,7 +404,7 @@ void *get_next_avail(int num_pages) {
 
 	static int virt_start = -1; 
 	printf("virt_start:%d\n",virt_start);
-	while(i+num_pages<=num_virt_pages && virt_start == -1){	
+	while(i+num_pages<=num_virt_pages){	
 		if(get_bit_at_index(virt_bitmap,i) == 0){// it's free!
 			virt_start = i;
 			int count = 1;
@@ -509,14 +509,18 @@ void a_free(void *va, int size) {
 	unsigned long vpn  = pd_index * num_pte + pt_index;
 	//set bit to 0
 	//get num pages
-	int num_pages = (int)ceil((double)(size/PGSIZE));
+	int num_pages = size / PGSIZE;
+	if(size % PGSIZE !=0){
+		num_pages +=1;
+	}
 	// just set bitmap bits to 0
 	for(int i=0;i<num_pages;i++){
 		if(get_bit_at_index(virt_bitmap,vpn+i)==0){
 			printf("err:this was alredy unused\n");
 			return;
 		}
-		pte_t pa_or_pfn = *(translate(NULL,va + (i*PGSIZE)));
+		unsigned long trans_addr = (virtual_address + (i*PGSIZE));
+		pte_t pa_or_pfn = *(translate(NULL,&trans_addr));
 		if(pa_or_pfn==0){
 			printf("err: physical addr is null\n");
 			return;
