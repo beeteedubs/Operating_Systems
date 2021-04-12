@@ -307,8 +307,7 @@ pte_t *translate(pde_t *pgdir, void *va) {
 
 	/*find and check if PDE contains a valid physical frame number (ie there's a page table at this physical address w/ at least 1 valid PTE) in physical memory*/
 	// find PDE = index into pd pointer
-	get_all_bits(phys_bitmap);
-	get_all_bits(virt_bitmap);
+
 	pde_t pde_pfn = pd[pd_index]; // pointer since pd is **, and points to first PDE in page table
 	if(get_bit_at_index(phys_bitmap,pde_pfn)==0){// whole entry is PFN
 		printf("pde points to invaliiid physical page # according to phys_bitmap\n");
@@ -432,6 +431,8 @@ and used by the benchmark
 */
 void *a_malloc(unsigned int num_bytes) {
 	printf("a_mallocing------------\n");
+	get_all_bits(phys_bitmap);
+	get_all_bits(virt_bitmap);
     /* 
      * HINT: If the physical memory is not yet initialized, then allocate and initialize.
      */
@@ -487,6 +488,8 @@ void *a_malloc(unsigned int num_bytes) {
 		count++;
 	}
 	pthread_mutex_unlock(&mutex);
+	get_all_bits(phys_bitmap);
+	get_all_bits(virt_bitmap);
 	return (void*)va_ptr;
 }
 
@@ -500,6 +503,7 @@ void a_free(void *va, int size) {
      * memory from "va" to va+size is valid.
      * Part 2: Also, remove the translation from the TLB
      */
+	printf("a_free---------\n");
 	//get vpn
     unsigned long virtual_address =*((unsigned long*)(va));
     unsigned long pd_index = get_top_bits(virtual_address, num_pd_bits); //note: generalized get_top_bits(va,10)
@@ -525,6 +529,7 @@ void a_free(void *va, int size) {
 			printf("err: physical addr is null\n");
 			return;
 		}
+		
 		clear_bit_at_index(virt_bitmap,vpn+i);
 		clear_bit_at_index(phys_bitmap,pa_or_pfn);
 	}
@@ -549,22 +554,42 @@ void put_value(void *va, void *val, int size) {
 	if(size % PGSIZE != 0){
 		num_pages++;
 	}
-	int temp_size = size;
-	unsigned long virt_addr = *(unsigned long*)va;
+	int temp_size = size;//remaining bytes to copy left
+	unsigned long virtual_address = *(unsigned long*)va;
 
     unsigned long pd_index = get_top_bits(virtual_address, num_pd_bits); //note: generalized get_top_bits(va,10)
     unsigned long pt_index = get_mid_bits(virtual_address, num_pt_bits, num_offset_bits);
     unsigned long offset = get_mid_bits(virtual_address, num_offset_bits, 0);	
 
 	unsigned long vpn =  pd_index * num_pte + pt_index;
+	pte_t pfn = 0;
+	/*maybe check if VPN valid*/
+	if(get_bit_at_index(virt_bitmap,vpn)==0){
+		printf("VPN: %lu is invald\n",vpn);
+		return;
+	}
 
-	for(int count = 0; count<num_pages; count++;){
+	for(int count = 0; count<num_pages; count++){
 		if(temp_size <= 0){
 			break;
 		}
-
-
+		pfn = *(translate(NULL,va+(count*PGSIZE)));
+		if(pfn ==0){//PFN IS ACTUALLY PA
+			printf("done-goofed\n");
+			pthread_mutex_unlock(&mutex);
+			return;
+		}
+		if(temp_size<=PGSIZE-offset){//only copy temp_size bytes, happens last time
+			memcpy((void*)(phys_mem+PGSIZE*pfn),(void*)(val+(size-temp_size)),temp_size);
+			temp_size = 0;
+		}else{
+			//copy page worth of mem
+			memcpy((void*)(phys_mem+PGSIZE*pfn),(void*)(val+(size-temp_size)),PGSIZE-offset);
+			temp_size -= (PGSIZE-offset);
+		}
+		offset = 0;
 	}
+	pthread_mutex_unlock(&mutex);
 	return;
 
 }
@@ -577,9 +602,44 @@ void get_value(void *va, void *val, int size) {
     * "val" address. Assume you can access "val" directly by derefencing them.
     */
 
+	pthread_mutex_lock(&mutex);
+	pte_t pfn = 0;
+	unsigned long num_pages = size/PGSIZE;
+	if(size%PGSIZE!=0){
+		num_pages++;
+	}
 
+	int temp_size = size;
+	unsigned long virtual_address = *(unsigned long*)va;
+
+    unsigned long pd_index = get_top_bits(virtual_address, num_pd_bits); //note: generalized get_top_bits(va,10)
+    unsigned long pt_index = get_mid_bits(virtual_address, num_pt_bits, num_offset_bits);
+    unsigned long offset = get_mid_bits(virtual_address, num_offset_bits, 0);	
+
+	unsigned long vpn =  pd_index * num_pte + pt_index;
+
+	for(int count =0;count<num_pages;count++){
+		if(temp_size<=0){
+			break;
+		}
+		pfn = *(translate(NULL,va+(count*PGSIZE)));
+		if(pfn ==0){//PFN IS ACTUALLY PA
+			printf("done-goofed\n");
+			pthread_mutex_unlock(&mutex);
+			return;
+		}
+		if(temp_size<=PGSIZE-offset){//only copy temp_size bytes, happens last time
+			memcpy((void*)(phys_mem+PGSIZE*pfn),(void*)(val+(size-temp_size)),temp_size);
+			temp_size = 0;
+		}else{
+			//copy page worth of mem
+			memcpy((void*)(phys_mem+PGSIZE*pfn),(void*)(val+(size-temp_size)),PGSIZE-offset);
+			temp_size -= (PGSIZE-offset);
+		}
+		offset = 0;
+	}
+	pthread_mutex_unlock(&mutex);
 	return;
-
 }
 
 
@@ -597,6 +657,31 @@ void mat_mult(void *mat1, void *mat2, int size, void *answer) {
      * getting the values from two matrices, you will perform multiplication and 
      * store the result to the "answer array"
      */
-	return ;
-       
+	 int i = 0;
+    int j = 0;
+    int k = 0;
+    int zero = 0;
+    unsigned int firstAddr = 0, secondAddr = 0, thirdAddr = 0;
+    int temp1 = 0;
+    int temp2 = 0;
+    int tempRes = 0;
+    for(i = 0; i < size; i++){
+        for(j = 0; j < size; j++){
+            // calculate the address of the index for answer and initialize it to 0
+            thirdAddr = (unsigned int)answer + ((i * size * sizeof(int))) + (j * sizeof(int));
+            put_value((void*) thirdAddr, &zero, sizeof(int));
+            tempRes = 0;
+            for(k = 0; k < size; k++){
+                // calcualte the two addresses of the matrices and then add them to
+                // the index of answer
+                firstAddr = (unsigned int)mat1 + ((i * size * sizeof(int))) + (k * sizeof(int));
+                secondAddr = (unsigned int)mat2 + ((k * size * sizeof(int))) + (j * sizeof(int));
+                get_value( (void*)firstAddr, &temp1,sizeof(int) );
+                get_value( (void*)secondAddr, &temp2, sizeof(int) );
+                tempRes += temp1 * temp2;
+            }
+            put_value((void*)thirdAddr, &tempRes, sizeof(int));
+        }
+    }
 }
+
