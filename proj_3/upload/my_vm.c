@@ -37,7 +37,6 @@ void *get_next_phys_avail(){
 	while(i<num_phys_pages){ // while no starting point o
 		if(get_bit_at_index(phys_bitmap,i) == 0){// it's free!
 			phys_start = i;
-			set_bit_at_index(phys_bitmap,i);
 			break;
 		}
 		i++;
@@ -366,14 +365,14 @@ int page_map(pde_t *pgdir, void *va, void *pa)
 		return -1;
 	}
 
-	// if VPN is invalid, return
+	// if VPN is invalid, return, since should already be set valid by a_malloc
 	if(get_bit_at_index(virt_bitmap,vpn)==0){
 		printf("VPN: %lu is invald\n",vpn);
 		return -1;
 	}
 	
-	// if VPN and Physical PN invalid, set to be valid cuz we creating the mapping now boyyyy
-	if(get_bit_at_index(phys_bitmap,physical_pn)==0){
+	// if VPN and Physical PN set valid beforehand...
+	if(get_bit_at_index(phys_bitmap,physical_pn)==1){
 		printf("VPN: %ld is valid,creating mapping\n",vpn);
 		
 		// this could be invalid, meaning we need a new page table
@@ -392,47 +391,20 @@ int page_map(pde_t *pgdir, void *va, void *pa)
 	
 		// set physical address in pte;
 		*pte_addr = physical_pn;
-
-		//change phys_bitmap
-		set_bit_at_index(virt_bitmap,vpn);
-		set_bit_at_index(phys_bitmap,physical_pn);
 	}else{
 		printf("already entry here...wait isn't that bad?\n");
 		return -1;
 	}
-
-	/*map*/
-
-
     return 1;
 }
 
 
 void *get_next_avail(int num_pages) {
-	/*
-	   - find num_pages of free+contiguous virtual  pages in virt_bitmap (ex: find 2 pages for 4076 B)
-	   - (not part of this fxn) finding num_pages of in phys_memory is trivial since they don't have to be contiguous
+	int i = 0;
 
-	   loop i in bitmap and until variable virt_start FN is not -1
-	   		if virt_bitmap at index i is 1
-				virt_start = i // or PhysicalPN
-				loop num_pages using i
-					if get_bit == 0 ever
-						set virt_start=-1 // restart :(
-		if virt_start != -1
-			return &virt_start
-	*/
-	
-	int i = 0; // index of virtual pages (ex: i's range=[0,2^32-1])
-	static int virt_start = -1; // start index of virtual pages
-	/*
-	edge cases:
-	- ez: all 0s
-	- hard: last num_page bits r 0s
-	- hard: (no solution) no bits r 0s
-	- hard: (no solution) only last bit 0
-	*/
-	while(i+num_pages<=num_virt_pages && virt_start == -1){ // while no starting point o
+	static int virt_start = -1; 
+	printf("virt_start:%d\n",virt_start);
+	while(i+num_pages<=num_virt_pages && virt_start == -1){	
 		if(get_bit_at_index(virt_bitmap,i) == 0){// it's free!
 			virt_start = i;
 			int count = 1;
@@ -493,8 +465,6 @@ void *a_malloc(unsigned int num_bytes) {
 		printf("oops no pages contiguous pages left\n");
 		return NULL;
 	}
-
-	// start mapping!
 
 	unsigned long virtual_address = vpn*PGSIZE;//remember no offset here
 	unsigned long* va_ptr = &virtual_address; // return this
