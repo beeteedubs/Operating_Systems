@@ -186,11 +186,11 @@ void set_physical_mem() {
 	// indicate that PD and a page table takes  VPN 0 and VPN 1, so should be set
 	///////////////////////UNSURE/////////////////////////////
 	set_bit_at_index(virt_bitmap,0); 
-	set_bit_at_index(virt_bitmap,1); 
+//	set_bit_at_index(virt_bitmap,1); 
 
 	// indicate that physical page number 0 and 1 taken by page directory and 1st page table
 	set_bit_at_index(phys_bitmap,0); 
-	set_bit_at_index(phys_bitmap,1); 
+//	set_bit_at_index(phys_bitmap,1); 
 	
 
 	// reserve PD from phys_mem
@@ -199,7 +199,7 @@ void set_physical_mem() {
 
 
 	//testing purposes, set VPN2, offset 0 = Physical Frame Number 8
-	pde_t pde_pfn = 1;
+	/*pde_t pde_pfn = 1;
 	pte_t pte_index = 2;
 	pd[0] = pde_pfn; // 1st PDE points to Physical Frame Number 1, where page table stored 
 
@@ -209,7 +209,7 @@ void set_physical_mem() {
 
 	pte_t actual_pa = 8;
 	set_bit_at_index(phys_bitmap,actual_pa); 
-	*pte_addr = actual_pa;
+	*pte_addr = actual_pa;*/
 
 	is_phys_mem_init = true;
 	return;
@@ -323,8 +323,8 @@ pte_t *translate(pde_t *pgdir, void *va) {
 
 	//double-check that it's valid and return
 	printf("PFN at pte: %lu,\n",*pte_addr);
-	*pte_addr+=offset;
-	printf("pa: %lu\n",*pte_addr);
+	*pte_addr=((*pte_addr)*PGSIZE)+offset;
+	printf("pa: %lu\n",*(pte_addr));
 	return pte_addr;
 	
 }
@@ -365,10 +365,16 @@ int page_map(pde_t *pgdir, void *va, void *pa)
 		printf("VPN: %ld is out of bounds\n",vpn);
 		return -1;
 	}
+
+	// if VPN is invalid, return
+	if(get_bit_at_index(virt_bitmap,vpn)==0){
+		printf("VPN: %lu is invald\n",vpn);
+		return -1;
+	}
 	
 	// if VPN and Physical PN invalid, set to be valid cuz we creating the mapping now boyyyy
-	if(get_bit_at_index(virt_bitmap,vpn)==0 && get_bit_at_index(phys_bitmap,physical_pn)==0){
-		printf("VPN: %ld is invallid, setting to be valid now\n",vpn);
+	if(get_bit_at_index(phys_bitmap,physical_pn)==0){
+		printf("VPN: %ld is valid,creating mapping\n",vpn);
 		
 		// this could be invalid, meaning we need a new page table
 		if((pd[pd_index]) == 0){// get PFN to put new page table
@@ -471,13 +477,18 @@ void *a_malloc(unsigned int num_bytes) {
 		is_phys_mem_init = true;
 	}
 	// get num_pages
-	int num_pages = (int)ceil((double)(num_bytes/PGSIZE));
-	printf("checking-- should be same: num_pages: %d, num_bytes/PGSIZE: %d\n",num_pages, num_bytes/PGSIZE);
+	int num_pages = num_bytes / PGSIZE;
+	if(num_bytes % PGSIZE !=0){
+		num_pages +=1;
+	}
 
 	// get ptr to virtual address from VPN
 	unsigned long vpn = *(unsigned long*)(get_next_avail(num_pages));
 	if(vpn!=-1){//-1 means no pages left
-		printf("found some pages\n");
+		printf("found some pages, setting the valid so they can be mapped\n");
+		for(int i=0;i<num_pages;i++){
+			set_bit_at_index(virt_bitmap,vpn+i);
+		}
 	}else{
 		printf("oops no pages contiguous pages left\n");
 		return NULL;
@@ -492,9 +503,10 @@ void *a_malloc(unsigned int num_bytes) {
 	unsigned long page_map_va_ptr; //change later
 	while(count<num_pages){
 		pa = (unsigned long*)(get_next_phys_avail());
+		set_bit_at_index(phys_bitmap,*pa);
 		*pa = (*pa)*PGSIZE;
 		page_map_va_ptr =(count+vpn)*PGSIZE;
-		int ret_val = page_map(NULL,(void*)(&page_map_va_ptr),(void*)(&pa));//don't need to use counter for ppn 
+		int ret_val = page_map(NULL,(void*)(&page_map_va_ptr),(void*)(pa));//don't need to use counter for ppn 
 		if(ret_val==1){//success
 			printf("success\n");
 		}
