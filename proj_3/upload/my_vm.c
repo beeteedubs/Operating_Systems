@@ -544,7 +544,27 @@ void put_value(void *va, void *val, int size) {
      * function.
      */
 
+	pthread_mutex_lock(&mutex);
+	unsigned long num_pages = size/PGSIZE;
+	if(size % PGSIZE != 0){
+		num_pages++;
+	}
+	int temp_size = size;
+	unsigned long virt_addr = *(unsigned long*)va;
 
+    unsigned long pd_index = get_top_bits(virtual_address, num_pd_bits); //note: generalized get_top_bits(va,10)
+    unsigned long pt_index = get_mid_bits(virtual_address, num_pt_bits, num_offset_bits);
+    unsigned long offset = get_mid_bits(virtual_address, num_offset_bits, 0);	
+
+	unsigned long vpn =  pd_index * num_pte + pt_index;
+
+	for(int count = 0; count<num_pages; count++;){
+		if(temp_size <= 0){
+			break;
+		}
+
+
+	}
 	return;
 
 }
