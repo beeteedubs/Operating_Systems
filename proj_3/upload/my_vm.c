@@ -319,10 +319,11 @@ pte_t *translate(pde_t *pgdir, void *va) {
 	pte_t *page_table = (unsigned long*)(phys_mem+(pde_pfn<<num_pt_bits));
 	pte_t *pte_addr = page_table+pt_index*sizeof(pte_t);
 
-	//double-check that it's valid and return
+	//return addr now
 	printf("PFN at pte: %lu,\n",*pte_addr);
-	*pte_addr=((*pte_addr)*PGSIZE)+offset;
-	printf("pa: %lu\n",*(pte_addr));
+	pte_t ans = (((*pte_addr)*PGSIZE)+offset);
+
+	printf("pa: %lu\n",ans);
 	return pte_addr;
 	
 }
@@ -563,7 +564,7 @@ void put_value(void *va, void *val, int size) {
     unsigned long offset = get_mid_bits(virtual_address, num_offset_bits, 0);	
 
 	unsigned long vpn =  pd_index * num_pte + pt_index;
-	pte_t pfn = 0;
+	pte_t pa = 0;
 	/*maybe check if VPN valid*/
 	if(get_bit_at_index(virt_bitmap,vpn)==0){
 		printf("VPN: %lu is invald\n",vpn);
@@ -574,18 +575,18 @@ void put_value(void *va, void *val, int size) {
 		if(temp_size <= 0){
 			break;
 		}
-		pfn = *(translate(NULL,va+(count*PGSIZE)));
-		if(pfn ==0){//PFN IS ACTUALLY PA
+		pa = *(translate(NULL,(void*)(virtual_address+(count*PGSIZE))));
+		if(pa ==0){
 			printf("done-goofed\n");
 			pthread_mutex_unlock(&mutex);
 			return;
 		}
 		if(temp_size<=PGSIZE-offset){//only copy temp_size bytes, happens last time
-			memcpy((void*)(phys_mem+PGSIZE*pfn),(void*)(val+(size-temp_size)),temp_size);
+			memcpy((void*)(phys_mem+pa),(void*)(val+(size-temp_size)),temp_size);
 			temp_size = 0;
 		}else{
 			//copy page worth of mem
-			memcpy((void*)(phys_mem+PGSIZE*pfn),(void*)(val+(size-temp_size)),PGSIZE-offset);
+			memcpy((void*)(phys_mem+pa),(void*)(val+(size-temp_size)),PGSIZE-offset);
 			temp_size -= (PGSIZE-offset);
 		}
 		offset = 0;
