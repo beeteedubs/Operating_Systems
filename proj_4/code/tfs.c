@@ -25,6 +25,9 @@
 char diskfile_path[PATH_MAX];
 
 // Declare your in-memory data structures here
+struct superblock* sb;
+
+
 
 /* 
  * Get available inode number from bitmap
@@ -140,8 +143,13 @@ int get_node_by_path(const char *path, uint16_t ino, struct inode *inode) {
 int tfs_mkfs() {
 
 	// Call dev_init() to initialize (Create) Diskfile
+	dev_init(diskfile_path);
 
 	// write superblock information
+	sb = (struct superblock*) malloc( sizeof(struct superblock));	
+    sb->magic_num = MAGIC_NUM;
+    sb->max_inum = MAX_INUM;
+    sb->max_dnum = MAX_DNUM;
 
 	// initialize inode bitmap
 
@@ -161,9 +169,17 @@ int tfs_mkfs() {
 static void *tfs_init(struct fuse_conn_info *conn) {
 
 	// Step 1a: If disk file is not found, call mkfs
+	if(dev_open(diskfile_path)==-1){
+		puts("Running tfs_mkfs()");
+		tfs_mkfs();
+	}
 
-  // Step 1b: If disk file is found, just initialize in-memory data structures
-  // and read superblock from disk
+ 	// Step 1b: If disk file is found, just initialize in-memory data structures
+  	// and read superblock from disk
+	char* buffer = (char*) malloc(sizeof(char) * BLOCK_SIZE);
+    bio_read(0,(void*) buffer);
+    sb = (struct superblock*) buffer;
+
 
 	return NULL;
 }
@@ -173,6 +189,7 @@ static void tfs_destroy(void *userdata) {
 	// Step 1: De-allocate in-memory data structures
 
 	// Step 2: Close diskfile
+	dev_close();
 
 }
 
