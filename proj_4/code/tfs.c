@@ -141,7 +141,7 @@ int get_node_by_path(const char *path, uint16_t ino, struct inode *inode) {
  * Make file system
  */
 int tfs_mkfs() {
-
+	printf("STARTING tfs_mkfs()\n");
 	// Call dev_init() to initialize (Create) Diskfile
 	dev_init(diskfile_path);
 
@@ -150,15 +150,23 @@ int tfs_mkfs() {
     sb->magic_num = MAGIC_NUM;
     sb->max_inum = MAX_INUM;
     sb->max_dnum = MAX_DNUM;
+	sb->i_bitmap_blk = 1;
+	sb->d_bitmap_blk = 2;
+	sb->i_start_blk = 3; // 64 blocks (16 per block for 1024 inodes)
+	sb->d_start_blk = 67;
 
 	// initialize inode bitmap
-
+	int num_ibit_bytes = MAX_INUM/sizeof(bitmap_t);
+	bitmap_t* ibit = (bitmap_t*) malloc(num_ibit_bytes);
+	memset(ibit,0,num_ibit_bytes);
 	// initialize data block bitmap
-
+	int num_dbit_bytes = MAX_DNUM/sizeof(bitmap_t);
+	bitmap_t* dbit = (bitmap_t*) malloc(num_dbit_bytes);
+	memset(dbit,0,num_dbit_bytes);
 	// update bitmap information for root directory
 
 	// update inode for root directory
-
+	printf("ENDING tfs_mkfs()\n");
 	return 0;
 }
 
