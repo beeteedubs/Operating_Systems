@@ -164,8 +164,14 @@ int tfs_mkfs() {
 	bitmap_t* dbit = (bitmap_t*) malloc(num_dbit_bytes);
 	memset(dbit,0,num_dbit_bytes);
 	// update bitmap information for root directory
-
+	set_bitmap(ibit,0); // root directory at 0th node
 	// update inode for root directory
+	struct inode* rootI = (struct inode*)malloc(sizeof(struct inode));
+	rootI->ino=0;
+	rootI->valid = 1;
+	rootI->size = 0;
+	rootI->type = 1;
+	rootI->link = 1; // typically directory
 	printf("ENDING tfs_mkfs()\n");
 	return 0;
 }
