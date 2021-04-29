@@ -25,22 +25,43 @@
 char diskfile_path[PATH_MAX];
 
 // Declare your in-memory data structures here
-struct superblock* sb;
-
-
+struct superblock* sb;//since not modified much, safe to keep here, other
+int num_ibit_bytes = MAX_INUM/8;
+int num_dbit_bytes = MAX_DNUM/8;
 
 /* 
  * Get available inode number from bitmap
  */
 int get_avail_ino() {
+	printf("STARTING get_avail_ino()\n");
 
 	// Step 1: Read inode bitmap from disk
+	char *buffer = (char*)malloc(sizeof(char)*BLOCK_SIZE); // entire block
+	char *ibuff = (char*)malloc(sizeof(char)*num_ibit_bytes);// part of entire block that contains bitmap
+	bio_read(1,(void*)buffer);
+	int i;
+	for(i = 0;i<num_ibit_bytes;i++){//run for however many bytes makeup the inode bitmap
+		ibuff[i] = buffer[i];//CHANGE: DON'T NEED IBUFF 
+	}
+	bitmap_t ibit = (bitmap_t) ibuff; // cast to non-pointer since set_bitmap is weird and doesn't take in pointer but indexes it
 	
 	// Step 2: Traverse inode bitmap to find an available slot
-
+	for(i = 0; i<MAX_INUM;i++){//note: not num_ibit_bytes since now checking at bit level, by byte by byte
+	
 	// Step 3: Update inode bitmap and write to disk 
-
-	return 0;
+		if(get_bitmap(ibit,i)==0){//if i'th bit is 0, found a free inode index at index "i"
+			set_bitmap(ibit,i);
+			bio_write(1,(void*)ibit);//write immediately back to disk
+			free(ibuff);
+			free(buffer);
+			printf("ENDING get_avail_ino()\n");
+			return i;
+		}
+	}
+	free(ibuff);
+	free(buffer);
+	printf("ENDING get_avail_ino()\n");
+	return -1;
 }
 
 /* 
@@ -48,8 +69,8 @@ int get_avail_ino() {
  */
 int get_avail_blkno() {
 
-	// Step 1: Read data block bitmap from disk
-	
+	// Step 1: Read data block bitmap from disk	
+
 	// Step 2: Traverse data block bitmap to find an available slot
 
 	// Step 3: Update data block bitmap and write to disk 
@@ -72,13 +93,26 @@ int readi(uint16_t ino, struct inode *inode) {
 }
 
 int writei(uint16_t ino, struct inode *inode) {
+	printf("STARTING writei()\n");
 
 	// Step 1: Get the block number where this inode resides on disk
-	
+	int blkNum = (ino *sizeof(struct inode))/BLOCK_SIZE; // ch 40 page 5
+		
 	// Step 2: Get the offset in the block where this inode resides on disk
+	int blkOffset = (ino *sizeof(struct inode))%BLOCK_SIZE; 
 
 	// Step 3: Write inode to disk 
+	char buffer[BLOCK_SIZE]; // don't know y didn't do this before
+	int blkLocation = blkNum + sb->i_start_blk;
 
+	bio_read(blkLocation,(void*)buffer); // read into buffer
+	char *ibuff = (char*)inode;
+	for(int i = 0; i<sizeof(struct inode);i++){
+		buffer[blkOffset * sizeof(struct inode) + i] = ibuff[i];
+	}
+	bio_write(blkLocation,(void*)buffer);
+
+	printf("ENDING writei()\n");
 	return 0;
 }
 
@@ -141,7 +175,7 @@ int get_node_by_path(const char *path, uint16_t ino, struct inode *inode) {
  * Make file system
  */
 int tfs_mkfs() {
-
+	printf("STARTING tfs_mkfs()\n");
 	// Call dev_init() to initialize (Create) Diskfile
 	dev_init(diskfile_path);
 
@@ -150,15 +184,50 @@ int tfs_mkfs() {
     sb->magic_num = MAGIC_NUM;
     sb->max_inum = MAX_INUM;
     sb->max_dnum = MAX_DNUM;
+	sb->i_bitmap_blk = 1;
+	sb->d_bitmap_blk = 2;
+	sb->i_start_blk = 3; // 64 blocks (16 per block for 1024 inodes)
+	sb->d_start_blk = 67;
+	bio_write(0,(void*)sb);
 
 	// initialize inode bitmap
+	bitmap_t ibit = (bitmap_t) malloc(sizeof(char)*num_ibit_bytes);// MAX_INUM = # of bits, convert to # of bytes by /8, * by size of 1 byte
+
+	memset(ibit,0,num_ibit_bytes);
+	bio_write(1,(void*)ibit);
 
 	// initialize data block bitmap
+	bitmap_t dbit = (bitmap_t) malloc(sizeof(char)*num_dbit_bytes);//sizeof(char) just cuz it's same thing as 1 byte, could just as easily say 1
+	memset(dbit,0,num_dbit_bytes);
+	bio_write(2,(void*)dbit);
 
 	// update bitmap information for root directory
+	set_bitmap(ibit,0); // root directory at 0th node
 
 	// update inode for root directory
+	struct inode* rootI = (struct inode*)malloc(sizeof(struct inode));
+	rootI->ino=0;
+	rootI->valid = 1;
+	rootI->size = 0;
+	rootI->type = 1;
+	rootI->link = 1; // typically directory
+	int counter = 0;
+    for(counter = 0; counter < (sizeof(rootI->direct_ptr) / sizeof(int)); counter++){
+        (rootI->direct_ptr)[counter] = -1;//set all 16 ptrs to -1
+    }
+    for(counter = 0; counter < (sizeof(rootI->indirect_ptr) / sizeof(int)); counter++){
+        (rootI->indirect_ptr)[counter] = -1;//set all 8 ptrs to -1
+    }
+    // set the vstat values
+    (rootI->vstat).st_ino = 0;
+    (rootI->vstat).st_mode = S_IFDIR | 0755;
+    (rootI->vstat).st_uid = getuid();
+    (rootI->vstat).st_gid = getgid();
+    (rootI->vstat).st_nlink = 1;
+    (rootI->vstat).st_size = 0;
+	//writei(0,rootI);
 
+	printf("ENDING tfs_mkfs()\n");
 	return 0;
 }
 
