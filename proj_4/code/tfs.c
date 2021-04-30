@@ -28,6 +28,8 @@ char diskfile_path[PATH_MAX];
 struct superblock* sb;//since not modified much, safe to keep here, other
 int num_ibit_bytes = MAX_INUM/8;
 int num_dbit_bytes = MAX_DNUM/8;
+int numDirectPtr = 16; // hardcode since hardcoded in tfs.h
+int numDirentsPerBlk = BLOCK_SIZE/sizeof(struct dirent);
 
 /* 
  * Get available inode number from bitmap
@@ -121,10 +123,28 @@ int writei(uint16_t ino, struct inode *inode) {
  * directory operations
  */
 int dir_find(uint16_t ino, const char *fname, size_t name_len, struct dirent *dirent) {
+	printf("STARTING dir_find()\n");
 
-  // Step 1: Call readi() to get the inode using ino (inode number of current directory)
+ 	// Step 1: Call readi() to get the inode using ino (inode number of current directory)
+	struct inode *inode = (struct inode*)malloc(sizeof(struct inode)); // CHANGE, DON'T MALLOC
+	readi(ino,inode);
+	
+  	// Step 2: Get data block of current directory from inode
+	//char* buffer = (char*)malloc(sizeof(char)*BLOCK_SIZE);//CHANGE, DON'T MALLOC
+	int blkIndex = 0;
+	int ptrIndex = 0;
+	for(ptrIndex = 0; ptrIndex<numDirectPtr;ptrIndex++){
+		if((inode->direct_ptr)[ptrIndex] >=0){//set to -1 if not used
+			//copy whole block to buffer
+			char* buffer = (char*)malloc(sizeof(char)*BLOCK_SIZE);//CHANGE, DELETE + UNCOMMENT 132
+			int blkNum = (inode->direct_ptr)[ptrIndex] + sb->d_start_blk; // need to add to start blk number
+			bio_read(blkNum,(void*)buffer);
 
-  // Step 2: Get data block of current directory from inode
+			for(blkIndex = 0; blkIndex < numDirentsPerBlock; blkIndex ++){
+
+
+
+
 
   // Step 3: Read directory's data block and check each directory entry.
   //If the name matches, then copy directory entry to dirent structure
