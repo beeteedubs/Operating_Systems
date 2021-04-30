@@ -84,13 +84,34 @@ int get_avail_blkno() {
  * inode operations
  */
 int readi(uint16_t ino, struct inode *inode) {
+	print("STARTING readi()\n");
+  	// Step 1: Get the inode's on-disk block number
+  	int blkNum = (ino *sizeof(struct inode))/BLOCK_SIZE;
 
-  // Step 1: Get the inode's on-disk block number
+  	// Step 2: Get offset of the inode in the inode on-disk block
+  	int blkOffset = (ino *sizeof(struct inode))%BLOCK_SIZE;
 
-  // Step 2: Get offset of the inode in the inode on-disk block
+  	// Step 3: Read the block from disk and then copy into inode structure
+	char buffer[BLOCK_SIZE];
+	int blkLocation = blkNum + sb->i_start_blk;
 
-  // Step 3: Read the block from disk and then copy into inode structure
+	bio_read(blkLocation, (void*)buffer);
+	char *ibuff = (char*)malloc(sizeof(struct inode));
+	for(int i = 0; i < sizeof(struct inode); i++){
+		ibuff[i] = buffer[blkOffset * sizeof(struct inode) + i];
+	}
 
+	inode->ino = ((struct inode*) ibuff)->ino;
+	inode->valid = ((struct inode*) ibuff)->valid;
+	inode->size = ((struct inode*) ibuff)->size;
+	inode->type = ((struct inode*) ibuff)->type;
+	inode->link = ((struct inode*) ibuff)->link;
+	inode->vstat = ((struct inode*) ibuff)-> vstat;
+
+	memcpy(inode->direct_ptr, ((struct inode*) ibuff)->direct_ptr, sizeof(inode->direct_ptr));
+	memcpy(inode->indirect_ptr, ((struct inode*) ibuff)->indirect_ptr, sizeof(inode->indirect_ptr);
+
+	printf("ENDING readi()\n");
 	return 0;
 }
 
