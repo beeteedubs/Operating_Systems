@@ -109,7 +109,7 @@ int get_avail_blkno() {
  * inode operations
  */
 int readi(uint16_t ino, struct inode *inode) {
-	print("STARTING readi()\n");
+	printf("STARTING readi()\n");
   	// Step 1: Get the inode's on-disk block number
   	int blkNum = (ino *sizeof(struct inode))/BLOCK_SIZE;
 
@@ -134,7 +134,7 @@ int readi(uint16_t ino, struct inode *inode) {
 	inode->vstat = ((struct inode*) ibuff)-> vstat;
 
 	memcpy(inode->direct_ptr, ((struct inode*) ibuff)->direct_ptr, sizeof(inode->direct_ptr));
-	memcpy(inode->indirect_ptr, ((struct inode*) ibuff)->indirect_ptr, sizeof(inode->indirect_ptr);
+	memcpy(inode->indirect_ptr, ((struct inode*) ibuff)->indirect_ptr, sizeof(inode->indirect_ptr));
 
 	printf("ENDING readi()\n");
 	return 0;
@@ -437,7 +437,7 @@ int tfs_mkfs() {
  * FUSE file operations
  */
 static void *tfs_init(struct fuse_conn_info *conn) {
-
+	printf("STARTING tfs_init()\n");
 	// Step 1a: If disk file is not found, call mkfs
 	if(dev_open(diskfile_path)==-1){
 		puts("Running tfs_mkfs()");
@@ -450,7 +450,7 @@ static void *tfs_init(struct fuse_conn_info *conn) {
     bio_read(0,(void*) buffer);
     sb = (struct superblock*) buffer;
 
-
+	printf("ENDING tfs_init(): sucess\n");
 	return NULL;
 }
 
