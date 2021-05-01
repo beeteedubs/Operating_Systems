@@ -188,7 +188,7 @@ int dir_add(struct inode dir_inode, uint16_t f_ino, const char *fname, size_t na
 	}
 
 	// Step 3: Add directory entry in dir_inode's data block and write to disk
-	bool isWrote = false;
+	int isWrote = 0;
 	int firstPtr = -1; // keep track of first invalid block index of this inode
 	// loop through direct ptrs
 	int directIndex = 0;
@@ -219,33 +219,60 @@ int dir_add(struct inode dir_inode, uint16_t f_ino, const char *fname, size_t na
 					}
 
 					bio_write(blkNum,(void*)buffer);//write back to "disk"
-					isWrote = True;
+					isWrote = 1;
 					break;
 				}
 			}
 		}else{
 			if(firstPtr == -1){// really just care of -1 or not
-				firstPtr = directIndex;//firstPtr =  index of direct ptr that points to invalid block, if stays -1 then all directPtrs point to (totally) used blcok
+				firstPtr = directIndex;//firstPtr = first index of direct ptr that "points" to invalid block index, if stays -1 then all directPtrs point to (totally) used blcok
 			}
 		}
-		if(wroteDir == 1){
+		if(isWrote == 1){
 			break;
 		}
 
 	}
-	if(wroteDir == 0){//not written
+
+	if(isWrote == 0){//not written
 		if(firstPtr == -1){//because all direct ptrs weren't pointing to any valid block's indeces
 			printf("ENDING dir_find(): no direct ptrs were valid\n");
 			return -1;
 		}
+		// no more rom in allocated blocks, but there's a free direct ptr so use that to tpoint to a new block
+		int newDataBlock = get_avail_blkno();
+		if(newDataBlock == -1){
+			printf("ENDING dir_find(): LMAO there's actually no free blocks left\n");
+			return -1;
+		}
+		dir_inode.direct_ptr[firstPtr] = newDataBlock;
+		// Allocate a new data block for this directory if it does not exist
 
+		struct dirent* tempDirent = (struct dirent*) malloc( sizeof(struct dirent) );
+        tempDirent->ino = f_ino;
+        tempDirent->valid = 1;
+        tempDirent->len = name_len;
+        strcpy(tempDirent->name, fname);
+        // cast it to a buffer
+        char* direntBuffer = (char*) tempDirent;
+        // create a block buffer and add this
+        char* buffer = (char*) malloc( sizeof(char*) * BLOCK_SIZE);
+        // copy over dirent to block buffer
+        int counter = 0;
+        for(counter = 0; counter < sizeof(struct dirent); counter++){
+            buffer[counter] = direntBuffer[counter];
+        }
+        // write it to the disk (newDataBlock is 0 indexed from data segment. Have to incldue blocks before)
+        bio_write( newDataBlock + sb->d_start_blk, (void*) buffer);
 
-			
-	// Allocate a new data block for this directory if it does not exist
-
-	// Update directory inode
-
+	    // Update directory inode
+        // UDATE SIZE                                                       ********
+        dir_inode.size += BLOCK_SIZE;
+	}
 	// Write directory entry
+
+	writei(dir_inode.ino, &dir_inode);
+	printf("ENDING dir_find(): success\n");
 
 	return 0;
 }
@@ -464,19 +491,64 @@ static int tfs_releasedir(const char *path, struct fuse_file_info *fi) {
 }
 
 static int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
-
+	printf("STARTING tfs_create()\n");
 	// Step 1: Use dirname() and basename() to separate parent directory path and target file name
+	char* dirCopy = strdup(path);
+	char* baseCopy = strdup(path);
+	char* dirName = dirname(dirCopy);
+	char* baseName = basename(baseCopy);
 
 	// Step 2: Call get_node_by_path() to get inode of parent directory
-
+	struct inode* tempInode = (struct inode*)malloc(sizeof(struct inode));
+	int getNodePathRes = get_node_by_path(dirName,0,tempInode);
+	if(getNodePathRes != 0){//if failed
+		printf("ENDING tfs_create(): couldn't find directory\n");
+		return -1;
+	}
+	
 	// Step 3: Call get_avail_ino() to get an available inode number
+	int inoNum = get_avail_ino();
+	if(inoNum == -1){
+		printf("ENDING tfs_create(): no available inodes left\n");
+		return -1;
+	}
 
 	// Step 4: Call dir_add() to add directory entry of target file to parent directory
+	int addRes = dir_add(*tempInode, inoNum, baseName,strlen(baseName)+1);
+	if(addRes== -1){
+		printf("ENDING tfs_create(): couldn't add\n");
+		return -1;
+	}
 
 	// Step 5: Update inode for target file
+    struct inode* targetInode = (struct inode*) malloc(sizeof(struct inode));
+    targetInode->ino = inoNum;
+    targetInode->valid = 1;
+    targetInode->size = 0;
+    targetInode->type = 0; // file
+    targetInode->link = 1;
+    /* loop through all values and set them to -1 */
+    int counter = 0;
+    for(counter = 0; counter < (sizeof(targetInode->direct_ptr) / sizeof(int)); counter++){
+        (targetInode->direct_ptr)[counter] = -1;
+    }
+    for(counter = 0; counter < (sizeof(targetInode->indirect_ptr) / sizeof(int)); counter++){
+        (targetInode->indirect_ptr)[counter] = -1;
+    }	
+    /* set the vstat values */
+    (targetInode->vstat).st_ino = inoNum;
+    (targetInode->vstat).st_mode = S_IFREG | mode;
+    (targetInode->vstat).st_uid = getuid();
+    (targetInode->vstat).st_gid = getgid();
+    (targetInode->vstat).st_nlink = 1;
+    (targetInode->vstat).st_size = 0;
+    time( &((targetInode->vstat).st_atime) );
+    time( &((targetInode->vstat).st_mtime) );
 
 	// Step 6: Call writei() to write inode to disk
-
+    writei(inoNum, targetInode);
+	// Step 6: Call writei() to write inode to disk
+	printf("ENDING tfs_create(): success\n");
 	return 0;
 }
 
