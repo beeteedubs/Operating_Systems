@@ -70,14 +70,39 @@ int get_avail_ino() {
  * Get available data block number from bitmap
  */
 int get_avail_blkno() {
-
-	// Step 1: Read data block bitmap from disk	
-
-	// Step 2: Traverse data block bitmap to find an available slot
-
-	// Step 3: Update data block bitmap and write to disk 
-
-	return 0;
+	printf("STARTING get_avail_blkno(\n");
+	// Step 1: Read data block bitmap from disk
+    char* dbuff = (char*) malloc( sizeof(char) * (MAX_DNUM / 8));
+    char* buffer = (char*) malloc( sizeof(char) * BLOCK_SIZE);
+    bio_read(2,(void*) buffer);
+    
+    // copy first bytes to dbuff
+    int i = 0;
+    for(i = 0; i < MAX_DNUM / 8; i++){
+        dbuff[i] = buffer[i];
+    }
+	
+    // cast bitmap
+    bitmap_t dbit = (bitmap_t) dbuff;
+	
+    // Step 2: Traverse data block bitmap to find an available slot
+    for(i = 0; i < MAX_DNUM; i++){
+        if( get_bitmap(dbit,i) == 0 ){
+            // counter is now the ino that is fre
+	        // Step 3: Update data block bitmap and write to disk 
+            set_bitmap(dbit,i); 
+            bio_write(2,(void*) dbit);
+            // memset the data block
+            char* newBuff = (char*) malloc(sizeof(char) * BLOCK_SIZE);
+            memset(newBuff, 0, BLOCK_SIZE);
+            bio_write( i + sb->d_start_blk, (void*) newBuff );
+            printf("ENDING get_avail_blkno(): success\n");
+            // return the block number
+            return i;
+        }
+    }
+	printf("ENDING get_avail_blkno(): failure\n");
+	return -1;
 }
 
 /* 
