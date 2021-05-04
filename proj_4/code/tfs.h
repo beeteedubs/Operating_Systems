@@ -63,5 +63,5 @@ void unset_bitmap(bitmap_t b, int i) {
 uint8_t get_bitmap(bitmap_t b, int i) {
     return b[i / 8] & (1 << (i & 7)) ? 1 : 0;
 }
-
+int trimBlocks(struct inode*);
 #endif
