@@ -54,15 +54,13 @@ int get_avail_ino() {
 		if(get_bitmap(ibit,i)==0){//if i'th bit is 0, found a free inode index at index "i"
 			set_bitmap(ibit,i);
 			bio_write(1,(void*)ibit);//write immediately back to disk
-			free(ibuff);
-			free(buffer);
-			printf("ENDING get_avail_ino()\n");
+
+			printf("ENDING get_avail_ino(), found free inode at index: %d\n",i);
 			return i;
 		}
 	}
-	free(ibuff);
-	free(buffer);
-	printf("ENDING get_avail_ino()\n");
+
+	printf("ENDING get_avail_ino(): no free inodes\n");
 	return -1;
 }
 
@@ -96,7 +94,7 @@ int get_avail_blkno() {
             char* newBuff = (char*) malloc(sizeof(char) * BLOCK_SIZE);
             memset(newBuff, 0, BLOCK_SIZE);
             bio_write( i + sb->d_start_blk, (void*) newBuff );
-            printf("ENDING get_avail_blkno(): success\n");
+            printf("ENDING get_avail_blkno(), found free block at index: %d \n", i);
             // return the block number
             return i;
         }
